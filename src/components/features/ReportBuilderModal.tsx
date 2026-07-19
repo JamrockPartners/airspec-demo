@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Send, Save, Loader2, Bot, User, Sparkles, Paperclip, Image as ImageIcon, Zap, Code2, Copy, Download } from 'lucide-react';
+import { X, Send, Save, Loader2, Bot, User, Sparkles, Paperclip, Image as ImageIcon, Zap, Code2, Copy, Download, Lock } from 'lucide-react';
+import { reportService } from '../../services';
+import type { ModelAvailability } from '../../services/reportService';
 import type { ChatMessage, AirspecDocument, ChatImageAttachment } from '../../types/airspec';
 import type { GenerateProgressEvent } from '../../services/reportService';
 import ReportPreview from './reports/ReportPreview';
@@ -66,6 +68,7 @@ export default function ReportBuilderModal({
   const [copyToast, setCopyToast] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [previewImage, setPreviewImage] = useState<{ url: string; filename: string } | null>(null);
+  const [modelAvailability, setModelAvailability] = useState<ModelAvailability>({ openai: true, anthropic: true });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,6 +80,9 @@ export default function ReportBuilderModal({
   useEffect(() => {
     if (open) {
       setTimeout(() => textareaRef.current?.focus(), 100);
+      reportService.getModelAvailability()
+        .then(setModelAvailability)
+        .catch(() => {});
     }
   }, [open]);
 
@@ -369,7 +375,7 @@ export default function ReportBuilderModal({
               <div className="flex items-center gap-2">
                 <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Model</label>
                 <select
-                  value={model || 'gpt-5.6'}
+                  value={model || 'claude-sonnet-4-6'}
                   onChange={(e) => onModelChange(e.target.value)}
                   disabled={messages.length > 0}
                   className={`flex-1 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 ${
@@ -377,17 +383,34 @@ export default function ReportBuilderModal({
                   }`}
                 >
                   <optgroup label="OpenAI">
-                    <option value="gpt-5.6">GPT-5.6</option>
-                    <option value="gpt-5.5-pro">GPT-5.5 Pro</option>
-                    <option value="gpt-5.5">GPT-5.5</option>
+                    <option value="gpt-5.6" disabled={!modelAvailability.openai}>
+                      GPT-5.6{!modelAvailability.openai ? ' (key not configured)' : ''}
+                    </option>
+                    <option value="gpt-5.5-pro" disabled={!modelAvailability.openai}>
+                      GPT-5.5 Pro{!modelAvailability.openai ? ' (key not configured)' : ''}
+                    </option>
+                    <option value="gpt-5.5" disabled={!modelAvailability.openai}>
+                      GPT-5.5{!modelAvailability.openai ? ' (key not configured)' : ''}
+                    </option>
                   </optgroup>
                   <optgroup label="Anthropic">
-                    <option value="claude-sonnet-4-6">Claude Sonnet 4</option>
-                    <option value="claude-opus-4-8">Claude Opus 4</option>
-                    <option value="claude-fable-5">Claude Fable 5</option>
-                    <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+                    <option value="claude-sonnet-4-6" disabled={!modelAvailability.anthropic}>
+                      Claude Sonnet 4{!modelAvailability.anthropic ? ' (key not configured)' : ''}
+                    </option>
+                    <option value="claude-opus-4-8" disabled={!modelAvailability.anthropic}>
+                      Claude Opus 4{!modelAvailability.anthropic ? ' (key not configured)' : ''}
+                    </option>
+                    <option value="claude-fable-5" disabled={!modelAvailability.anthropic}>
+                      Claude Fable 5{!modelAvailability.anthropic ? ' (key not configured)' : ''}
+                    </option>
+                    <option value="claude-haiku-4-5-20251001" disabled={!modelAvailability.anthropic}>
+                      Claude Haiku 4.5{!modelAvailability.anthropic ? ' (key not configured)' : ''}
+                    </option>
                   </optgroup>
                 </select>
+                {(!modelAvailability.openai || !modelAvailability.anthropic) && (
+                  <Lock size={12} className="text-slate-400 shrink-0" />
+                )}
               </div>
             </div>
 

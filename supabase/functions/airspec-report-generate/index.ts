@@ -308,6 +308,17 @@ OUTPUT: one JSON object that conforms to AIRspec 1.1 exactly. Field names are ca
         const anthropicAvailable = !isOpenAIModel(selectedModel) && anthropicKey;
         const openaiAvailable = isOpenAIModel(selectedModel) && openaiKey;
 
+        if (isOpenAIModel(selectedModel) && !openaiKey) {
+          emit({ type: "error", message: `OpenAI API key is not configured. Cannot use model "${selectedModel}". Please select an Anthropic model instead.` });
+          controller.close();
+          return;
+        }
+        if (!isOpenAIModel(selectedModel) && !anthropicKey) {
+          emit({ type: "error", message: `Anthropic API key is not configured. Cannot use model "${selectedModel}". Please select an OpenAI model instead.` });
+          controller.close();
+          return;
+        }
+
         let specJson: Record<string, unknown> | null = null;
         let validationErrs: string[] = [];
         let modelUsed = selectedModel;
@@ -334,12 +345,6 @@ OUTPUT: one JSON object that conforms to AIRspec 1.1 exactly. Field names are ca
             candidate = await generateWithOpenAI(openaiKey, selectedModel, systemPrompt, userPrompt);
           } else if (anthropicAvailable) {
             candidate = await generateWithAnthropic(anthropicKey, selectedModel, systemPrompt, userPrompt);
-          } else if (anthropicKey) {
-            candidate = await generateWithAnthropic(anthropicKey, "claude-sonnet-4-6", systemPrompt, userPrompt);
-            modelUsed = "claude-sonnet-4-6";
-          } else if (openaiKey) {
-            candidate = await generateWithOpenAI(openaiKey, "gpt-5.5", systemPrompt, userPrompt);
-            modelUsed = "gpt-5.5";
           } else {
             candidate = generateFallbackSpec(requirements as string, sources);
             modelUsed = "fallback";

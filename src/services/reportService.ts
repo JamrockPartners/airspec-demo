@@ -207,3 +207,12 @@ export async function getChatHistory(sessionId: string): Promise<ChatMessage[]> 
   }));
 }
 
+export interface ModelAvailability {
+  openai: boolean;
+  anthropic: boolean;
+}
+
+export async function getModelAvailability(): Promise<ModelAvailability> {
+  return callEdgeFunction<ModelAvailability>('airspec-model-availability', {});
+}
+
