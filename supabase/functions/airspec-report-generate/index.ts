@@ -582,7 +582,6 @@ async function generateWithOpenAI(
     },
     body: JSON.stringify({
       model,
-      temperature: 0.3,
       max_completion_tokens: 16384,
       messages: [
         { role: "system", content: systemPrompt },
