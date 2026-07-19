@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "demo_tack_route": {
+      "enabled": false
+    },
+    "github": {
+      "enabled": true
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "airspec": "1.1",
+  "meta": { "title": "Count encoding (valid)", "description": "Field-less count channel — must render, not trigger MissingEncoding" },
+  "parameters": [],
+  "datasets": [
+    {
+      "id": "freq",
+      "source": "sales_orders",
+      "operation": "aggregate",
+      "dimensions": [{ "field": "category", "alias": "category" }],
+      "metrics": [{ "operation": "count", "alias": "frequency" }],
+      "limit": 50
+    }
+  ],
+  "layout": {
+    "id": "root",
+    "type": "stack",
+    "gap": "medium",
+    "children": [
+      {
+        "id": "hist",
+        "type": "chart",
+        "datasetId": "freq",
+        "graphic": {
+          "mark": { "type": "bar", "color": "#3264D6", "cornerRadiusEnd": 4 },
+          "encoding": {
+            "x": { "field": "category", "type": "nominal", "title": "Category" },
+            "y": { "aggregate": "count", "type": "quantitative", "title": "Frequency" }
+          }
+        }
+      }
+    ]
+  }
+}

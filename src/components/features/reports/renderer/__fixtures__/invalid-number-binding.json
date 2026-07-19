@@ -1,0 +1,48 @@
+{
+  "airspec": "1.1",
+  "meta": { "title": "Number-bound switch (invalid)", "description": "graphicBinding binds to a number parameter — must be rejected by validator" },
+  "parameters": [
+    {
+      "id": "bins",
+      "type": "number",
+      "label": "Bins",
+      "default": 10,
+      "min": 3,
+      "max": 20,
+      "step": 1
+    }
+  ],
+  "datasets": [
+    {
+      "id": "hist",
+      "source": "sales_orders",
+      "operation": "aggregate",
+      "dimensions": [{ "field": "category", "alias": "category" }],
+      "metrics": [{ "operation": "count", "alias": "frequency" }],
+      "limit": 50
+    }
+  ],
+  "layout": {
+    "id": "root",
+    "type": "stack",
+    "gap": "medium",
+    "children": [
+      {
+        "id": "switchChart",
+        "type": "chart",
+        "datasetId": "hist",
+        "graphicBinding": {
+          "parameter": "bins",
+          "cases": [
+            { "equals": 3, "value": { "mark": { "type": "bar" }, "encoding": { "x": { "field": "category", "type": "nominal" }, "y": { "aggregate": "count", "type": "quantitative" } } } },
+            { "equals": 5, "value": { "mark": { "type": "bar" }, "encoding": { "x": { "field": "category", "type": "nominal" }, "y": { "aggregate": "count", "type": "quantitative" } } } },
+            { "equals": 10, "value": { "mark": { "type": "bar" }, "encoding": { "x": { "field": "category", "type": "nominal" }, "y": { "aggregate": "count", "type": "quantitative" } } } },
+            { "equals": 15, "value": { "mark": { "type": "bar" }, "encoding": { "x": { "field": "category", "type": "nominal" }, "y": { "aggregate": "count", "type": "quantitative" } } } },
+            { "equals": 20, "value": { "mark": { "type": "bar" }, "encoding": { "x": { "field": "category", "type": "nominal" }, "y": { "aggregate": "count", "type": "quantitative" } } } }
+          ],
+          "default": { "mark": { "type": "bar" }, "encoding": { "x": { "field": "category", "type": "nominal" }, "y": { "aggregate": "count", "type": "quantitative" } } }
+        }
+      }
+    ]
+  }
+}

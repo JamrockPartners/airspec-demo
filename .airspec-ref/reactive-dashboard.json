@@ -1,0 +1,230 @@
+{
+  "airspec": "1.1",
+  "meta": {
+    "title": "Reactive Sales Explorer",
+    "description": "Demonstrates typed query bindings, graphic bindings, and atomic interactions."
+  },
+  "parameters": [
+    {
+      "id": "sliceBy",
+      "type": "select",
+      "label": "Slice by",
+      "default": "region",
+      "options": {
+        "type": "static",
+        "values": [
+          { "value": "region", "label": "Region" },
+          { "value": "status", "label": "Status" }
+        ]
+      }
+    },
+    {
+      "id": "metricMode",
+      "type": "select",
+      "label": "Measure",
+      "default": "revenue",
+      "options": {
+        "type": "static",
+        "values": [
+          { "value": "revenue", "label": "Revenue" },
+          { "value": "orders", "label": "Order count" }
+        ]
+      }
+    },
+    {
+      "id": "sortMode",
+      "type": "select",
+      "label": "Sort",
+      "default": "value",
+      "options": {
+        "type": "static",
+        "values": [
+          { "value": "value", "label": "Highest value" },
+          { "value": "category", "label": "Category" }
+        ]
+      }
+    },
+    {
+      "id": "topN",
+      "type": "select",
+      "label": "Show",
+      "default": 10,
+      "options": {
+        "type": "static",
+        "values": [
+          { "value": 5, "label": "Top 5" },
+          { "value": 10, "label": "Top 10" },
+          { "value": 25, "label": "Top 25" }
+        ]
+      }
+    },
+    {
+      "id": "chartMode",
+      "type": "select",
+      "label": "Chart",
+      "default": "bar",
+      "options": {
+        "type": "static",
+        "values": [
+          { "value": "bar", "label": "Bar" },
+          { "value": "line", "label": "Line" }
+        ]
+      }
+    },
+    {
+      "id": "selectedCategory",
+      "type": "text",
+      "label": "Selected category",
+      "hidden": true
+    }
+  ],
+  "datasets": [
+    {
+      "id": "salesBreakdown",
+      "source": "orders",
+      "operation": "aggregate",
+      "bindings": {
+        "dimensions": {
+          "parameter": "sliceBy",
+          "cases": [
+            {
+              "equals": "region",
+              "value": [{ "field": "region", "alias": "category" }]
+            },
+            {
+              "equals": "status",
+              "value": [{ "field": "status", "alias": "category" }]
+            }
+          ],
+          "default": [{ "field": "region", "alias": "category" }]
+        },
+        "metrics": {
+          "parameter": "metricMode",
+          "cases": [
+            {
+              "equals": "revenue",
+              "value": [{ "operation": "sum", "field": "total", "alias": "value" }]
+            },
+            {
+              "equals": "orders",
+              "value": [{ "operation": "count", "alias": "value" }]
+            }
+          ],
+          "default": [{ "operation": "sum", "field": "total", "alias": "value" }]
+        },
+        "sort": {
+          "parameter": "sortMode",
+          "cases": [
+            {
+              "equals": "value",
+              "value": [{ "field": "value", "direction": "descending" }]
+            },
+            {
+              "equals": "category",
+              "value": [{ "field": "category", "direction": "ascending" }]
+            }
+          ],
+          "default": [{ "field": "value", "direction": "descending" }]
+        },
+        "limit": {
+          "parameter": "topN",
+          "cases": [
+            { "equals": 5, "value": 5 },
+            { "equals": 10, "value": 10 },
+            { "equals": 25, "value": 25 }
+          ],
+          "default": 10
+        }
+      }
+    }
+  ],
+  "layout": {
+    "id": "root",
+    "type": "stack",
+    "gap": "medium",
+    "children": [
+      {
+        "id": "controls",
+        "type": "filterBar",
+        "parameters": ["sliceBy", "metricMode", "sortMode", "topN", "chartMode"]
+      },
+      {
+        "id": "salesChart",
+        "type": "chart",
+        "datasetId": "salesBreakdown",
+        "title": "Sales breakdown",
+        "graphicBinding": {
+          "parameter": "chartMode",
+          "cases": [
+            {
+              "equals": "bar",
+              "value": {
+                "mark": { "type": "bar", "color": "#3264D6", "cornerRadiusEnd": 4 },
+                "encoding": {
+                  "x": { "field": "category", "type": "nominal", "title": "Category" },
+                  "y": { "field": "value", "type": "quantitative", "title": "Value" }
+                },
+                "selections": [
+                  { "id": "pickedCategory", "type": "point", "on": "click", "fields": ["category"] }
+                ]
+              }
+            },
+            {
+              "equals": "line",
+              "value": {
+                "mark": { "type": "line", "color": "#3264D6", "point": true },
+                "encoding": {
+                  "x": { "field": "category", "type": "nominal", "title": "Category" },
+                  "y": { "field": "value", "type": "quantitative", "title": "Value" }
+                },
+                "selections": [
+                  { "id": "pickedCategory", "type": "point", "on": "click", "fields": ["category"] }
+                ]
+              }
+            }
+          ],
+          "default": {
+            "mark": { "type": "bar", "color": "#3264D6", "cornerRadiusEnd": 4 },
+            "encoding": {
+              "x": { "field": "category", "type": "nominal", "title": "Category" },
+              "y": { "field": "value", "type": "quantitative", "title": "Value" }
+            },
+            "selections": [
+              { "id": "pickedCategory", "type": "point", "on": "click", "fields": ["category"] }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "interactions": [
+    {
+      "id": "selectCategory",
+      "on": {
+        "component": "salesChart",
+        "event": "select",
+        "selection": "pickedCategory"
+      },
+      "actions": [
+        {
+          "type": "setParameter",
+          "parameter": "selectedCategory",
+          "valueFrom": { "field": "category", "mode": "scalar" }
+        },
+        { "type": "refresh", "datasetIds": ["salesBreakdown"] }
+      ]
+    },
+    {
+      "id": "clearCategory",
+      "on": {
+        "component": "salesChart",
+        "event": "selectionClear",
+        "selection": "pickedCategory"
+      },
+      "action": {
+        "type": "clearParameter",
+        "parameter": "selectedCategory"
+      }
+    }
+  ]
+}
