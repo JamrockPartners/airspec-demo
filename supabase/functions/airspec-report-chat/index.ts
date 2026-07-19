@@ -49,7 +49,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const selectedModel = model || "claude-sonnet-4-6";
+    const selectedModel = model || "gpt-5.6";
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

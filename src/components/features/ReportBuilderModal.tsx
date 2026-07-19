@@ -375,7 +375,7 @@ export default function ReportBuilderModal({
               <div className="flex items-center gap-2">
                 <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Model</label>
                 <select
-                  value={model || 'claude-sonnet-4-6'}
+                  value={model || 'gpt-5.6'}
                   onChange={(e) => onModelChange(e.target.value)}
                   disabled={messages.length > 0}
                   className={`flex-1 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 ${

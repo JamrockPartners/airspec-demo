@@ -267,7 +267,7 @@ Deno.serve(async (req: Request) => {
       try {
         emit({ type: "progress", status: "Initializing...", attempt: 0, totalAttempts: MAX_RETRIES + 1 });
 
-        const selectedModel = (model as string) || "claude-sonnet-4-6";
+        const selectedModel = (model as string) || "gpt-5.6";
 
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
