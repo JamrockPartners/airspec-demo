@@ -94,6 +94,12 @@ export default function AirChart({ component }: AirComponentProps) {
     }
   };
 
+  const rawData = datasetState?.data ?? [];
+  const data = useMemo(
+    () => graphic ? enforceDomainBounds(graphic, rawData) : rawData,
+    [graphic, rawData]
+  );
+
   const cardCls = seamless
     ? `${seamlessPad} bg-white h-full flex flex-col`
     : 'p-6 bg-white rounded-xl border border-slate-200 shadow-sm h-full flex flex-col';
@@ -113,12 +119,6 @@ export default function AirChart({ component }: AirComponentProps) {
       </div>
     );
   }
-
-  const rawData = datasetState?.data ?? [];
-  const data = useMemo(
-    () => graphic ? enforceDomainBounds(graphic, rawData) : rawData,
-    [graphic, rawData]
-  );
 
   return (
     <div className={cardCls} onClick={handleBackgroundClick}>
