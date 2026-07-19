@@ -173,7 +173,7 @@ async function callOpenAI(
   const requestBody = {
     model,
     temperature: 0.7,
-    max_tokens: 1024,
+    max_completion_tokens: 1024,
     messages: openaiMessages,
   };
 
