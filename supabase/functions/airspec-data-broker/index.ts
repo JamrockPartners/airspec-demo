@@ -589,10 +589,15 @@ function executeAggregate(rows: Record<string, unknown>[], def: ResolvedDataset)
   const results: Record<string, unknown>[] = [];
   for (const [, groupRows] of groups) {
     const result: Record<string, unknown> = {};
+    // Skip rollup/total rows: groups where any dimension value is null/undefined.
+    let hasNullDimension = false;
     for (const d of dimensions) {
       const alias = d.alias || d.field;
-      result[alias] = groupRows[0][alias];
+      const val = groupRows[0][alias];
+      if (val === null || val === undefined || val === "") { hasNullDimension = true; break; }
+      result[alias] = val;
     }
+    if (hasNullDimension) continue;
     for (const m of standardMetrics) {
       const alias = m.alias || defaultMetricAlias(m);
       result[alias] = computeMetric(groupRows, m);
