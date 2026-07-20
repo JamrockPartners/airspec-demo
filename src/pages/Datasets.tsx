@@ -236,55 +236,66 @@ export default function Datasets() {
               </div>
             </div>
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-              <div className="divide-y divide-slate-100">
-                {displayFields.map((f, idx) => (
-                  <div key={f.name} className="flex items-center gap-4 px-4 py-3">
-                    <div className="w-52 shrink-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-sm text-slate-800">{f.name}</span>
-                        <span className="text-[10px] text-slate-400">{f.type}</span>
-                      </div>
-                      {editingFields ? (
-                        <input
-                          type="text"
-                          value={editingFields[idx]?.key || ''}
-                          onChange={(e) => {
-                            const val = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '');
-                            const updated = [...editingFields];
-                            updated[idx] = { ...updated[idx], key: val };
-                            setEditingFields(updated);
-                          }}
-                          className="mt-1 w-full px-2 py-1 text-xs font-mono border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      ) : (
-                        <span className="block mt-0.5 text-xs font-mono text-slate-400">{f.key || '—'}</span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      {editingFields ? (
-                        <input
-                          type="text"
-                          value={editingFields[idx]?.description || ''}
-                          onChange={(e) => {
-                            const updated = [...editingFields];
-                            updated[idx] = { ...updated[idx], description: e.target.value || undefined };
-                            setEditingFields(updated);
-                          }}
-                          placeholder="Add a description for this field..."
-                          className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                        />
-                      ) : (
-                        <span className={`text-sm ${f.description ? 'text-slate-600' : 'text-slate-300 italic'}`}>
-                          {f.description || 'No description'}
-                        </span>
-                      )}
-                    </div>
-                    {!editingFields && f.description && (
-                      <Check size={14} className="text-emerald-500 shrink-0" />
-                    )}
-                  </div>
-                ))}
-              </div>
+              <table className="w-full table-fixed">
+                <colgroup>
+                  <col className="w-[200px]" />
+                  <col className="w-[180px]" />
+                  <col />
+                </colgroup>
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50">
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Field</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Key</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Description</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {displayFields.map((f, idx) => (
+                    <tr key={f.name}>
+                      <td className="px-4 py-3 align-top">
+                        <span className="block text-[10px] font-medium text-slate-400 uppercase tracking-wider leading-none mb-1">{f.type}</span>
+                        <span className="font-mono text-sm text-slate-800 break-words">{f.name}</span>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        {editingFields ? (
+                          <input
+                            type="text"
+                            value={editingFields[idx]?.key || ''}
+                            onChange={(e) => {
+                              const val = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+                              const updated = [...editingFields];
+                              updated[idx] = { ...updated[idx], key: val };
+                              setEditingFields(updated);
+                            }}
+                            className="w-full px-2 py-1 text-xs font-mono border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        ) : (
+                          <span className="text-xs font-mono text-slate-500">{f.key || '—'}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        {editingFields ? (
+                          <input
+                            type="text"
+                            value={editingFields[idx]?.description || ''}
+                            onChange={(e) => {
+                              const updated = [...editingFields];
+                              updated[idx] = { ...updated[idx], description: e.target.value || undefined };
+                              setEditingFields(updated);
+                            }}
+                            placeholder="Add a description..."
+                            className="w-full px-2 py-1 text-sm border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        ) : (
+                          <span className={`text-sm ${f.description ? 'text-slate-600' : 'text-slate-300 italic'}`}>
+                            {f.description || 'No description'}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

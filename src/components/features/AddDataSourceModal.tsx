@@ -573,10 +573,16 @@ export default function AddDataSourceModal({ open, onClose, onSuccess }: AddData
                   Detected Schema ({fields.length} columns)
                 </label>
                 <div className="border border-slate-200 rounded-lg overflow-hidden max-h-[40vh] overflow-y-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm table-fixed">
+                    <colgroup>
+                      <col className="w-[180px]" />
+                      <col className="w-[150px]" />
+                      <col />
+                      <col className="w-[140px]" />
+                    </colgroup>
                     <thead className="sticky top-0 bg-slate-50 z-10">
                       <tr className="border-b border-slate-200">
-                        <th className="text-left px-3 py-2 font-medium text-slate-600">Column</th>
+                        <th className="text-left px-3 py-2 font-medium text-slate-600">Field</th>
                         <th className="text-left px-3 py-2 font-medium text-slate-600">Key</th>
                         <th className="text-left px-3 py-2 font-medium text-slate-600">Description</th>
                         <th className="text-left px-3 py-2 font-medium text-slate-600">Sample</th>
@@ -585,11 +591,11 @@ export default function AddDataSourceModal({ open, onClose, onSuccess }: AddData
                     <tbody className="divide-y divide-slate-100">
                       {fields.map((f, idx) => (
                         <tr key={f.name}>
-                          <td className="px-3 py-2">
-                            <span className="font-mono text-xs text-slate-800">{f.name}</span>
-                            <span className="ml-1.5 text-[10px] text-slate-400">{f.type}</span>
+                          <td className="px-3 py-2 align-top">
+                            <span className="block text-[10px] font-medium text-slate-400 uppercase tracking-wider leading-none mb-0.5">{f.type}</span>
+                            <span className="font-mono text-xs text-slate-800 break-words">{f.name}</span>
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-3 py-2 align-top">
                             <input
                               type="text"
                               value={f.key || ''}
@@ -602,7 +608,7 @@ export default function AddDataSourceModal({ open, onClose, onSuccess }: AddData
                               className="w-full px-2 py-1 text-xs font-mono border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                             />
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-3 py-2 align-top">
                             <input
                               type="text"
                               value={f.description || ''}
@@ -615,7 +621,7 @@ export default function AddDataSourceModal({ open, onClose, onSuccess }: AddData
                               className="w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                             />
                           </td>
-                          <td className="px-3 py-2 text-xs text-slate-500 truncate max-w-[200px]">
+                          <td className="px-3 py-2 align-top text-xs text-slate-500 truncate">
                             {formatSampleValue(rows[0]?.[f.name])}
                           </td>
                         </tr>
