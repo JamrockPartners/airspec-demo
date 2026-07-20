@@ -311,6 +311,8 @@ ${sourceReference || "NO DATA SOURCES AVAILABLE — emit a document with a singl
 
 CRITICAL FIELD RULE: Every field reference anywhere in the document — datasets (fields, field, dimensions.field, metrics.valueField, sort.field, filters.field), table columns (columns[].field), and chart encodings (encoding.x.field, encoding.y.field, encoding.color.field, etc.) — MUST exactly match one of the field names listed above for the corresponding source. Field names are case-sensitive and exact. Do NOT invent, assume, memorize from training data, or substitute any field name not explicitly listed above. If the user's request implies data that does not map to an available field, use the closest available field.
 
+CRITICAL FORMAT RULE: Number/date formats are ALWAYS objects ({type, maximumFractionDigits, notation, etc.}), NEVER d3 format strings like ",", ".2f", or "%". For grouped digits use {"type":"number","useGrouping":true}; for compact use {"type":"number","notation":"compact"}; for no decimals use {"type":"number","maximumFractionDigits":0}. Axis ticks do NOT group by default.
+
 OUTPUT: one JSON object that conforms to AIRspec 1.1 exactly. Schema keys are case-sensitive. ANY key not in the spec above is a failure.`;
 
         const anthropicAvailable = !isOpenAIModel(selectedModel) && anthropicKey;
@@ -712,7 +714,7 @@ function validateSpec(spec: Record<string, unknown>, sources: DataSourceRow[]): 
 
   // --- datasets ---
   const validSourceIds = new Set(sources.map((s) => s.slug));
-  const sourceFieldMap = new Map(sources.map((s) => [s.slug, new Set(s.fields_json.map((f) => f.name))]));
+  const sourceFieldMap = new Map(sources.map((s) => [s.slug, new Set(s.fields_json.map((f) => f.key || f.name))]));
   const datasets = (spec.datasets ?? []) as Record<string, unknown>[];
   const datasetIds = new Set<string>();
   for (const [i, ds] of datasets.entries()) {
