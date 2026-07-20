@@ -1,62 +1,10 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { AirComponentProps } from '../componentRegistry';
 import { useReportContext } from '../ReportContext';
 import { useGridContext } from '../GridContext';
 import { RenderGraphic } from '../airmark/RenderGraphic';
-import type { AirspecChartComponent, AirspecGraphic } from '../../../../../types/airspec';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Encoding = Record<string, any>;
-
-function enforceDomainBounds(graphic: AirspecGraphic, data: Record<string, unknown>[]): Record<string, unknown>[] {
-  if (!data.length) return data;
-
-  const encodings: Encoding[] = [];
-  if ('encoding' in graphic && graphic.encoding) {
-    encodings.push(graphic.encoding as Encoding);
-  }
-  if ('layers' in graphic && Array.isArray(graphic.layers)) {
-    for (const layer of graphic.layers) {
-      if (layer.encoding) encodings.push(layer.encoding as Encoding);
-    }
-  }
-
-  const syntheticRow: Record<string, unknown> = {};
-  let needsInjection = false;
-
-  for (const encoding of encodings) {
-    for (const channel of Object.values(encoding)) {
-      if (!channel || typeof channel !== 'object') continue;
-      const ch = channel as { field?: string; scale?: { domain?: unknown[] }; type?: string };
-      if (!ch.field || !ch.scale?.domain || !Array.isArray(ch.scale.domain)) continue;
-      if (ch.type !== 'quantitative') continue;
-      const [lo, hi] = ch.scale.domain as [number, number];
-      if (typeof hi !== 'number') continue;
-      const maxInData = Math.max(...data.map(r => {
-        const v = r[ch.field!];
-        return typeof v === 'number' ? v : -Infinity;
-      }));
-      if (maxInData < hi) {
-        syntheticRow[ch.field!] = hi;
-        needsInjection = true;
-      }
-      if (typeof lo === 'number') {
-        const minInData = Math.min(...data.map(r => {
-          const v = r[ch.field!];
-          return typeof v === 'number' ? v : Infinity;
-        }));
-        if (minInData > lo && syntheticRow[ch.field!] === undefined) {
-          syntheticRow[ch.field!] = lo;
-          needsInjection = true;
-        }
-      }
-    }
-  }
-
-  if (!needsInjection) return data;
-  return [...data, syntheticRow];
-}
+import type { AirspecChartComponent } from '../../../../../types/airspec';
 
 export default function AirChart({ component }: AirComponentProps) {
   const { datasets, loadDataset, resolveGraphic, selections, updateSelection, clearSelection, triggerInteraction } = useReportContext();
@@ -95,10 +43,7 @@ export default function AirChart({ component }: AirComponentProps) {
   };
 
   const rawData = datasetState?.data ?? [];
-  const data = useMemo(
-    () => graphic ? enforceDomainBounds(graphic, rawData) : rawData,
-    [graphic, rawData]
-  );
+  const data = rawData;
 
   const cardCls = seamless
     ? `${seamlessPad} bg-white h-full flex flex-col`
