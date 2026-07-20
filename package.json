@@ -13,9 +13,9 @@
     "conformance": "vitest run src/components/features/reports/renderer/__fixtures__/conformance-harness.test.ts"
   },
   "dependencies": {
-    "@airspec/airmark-engine": "^0.4.3",
-    "@airspec/airmark-react": "^0.4.3",
-    "@airspec/airmark-svg": "^0.4.3",
+    "@airspec/airmark-engine": "^0.4.4",
+    "@airspec/airmark-react": "^0.4.4",
+    "@airspec/airmark-svg": "^0.4.4",
     "@supabase/supabase-js": "^2.57.4",
     "@types/react-syntax-highlighter": "^15.5.13",
     "lucide-react": "^0.344.0",
