@@ -574,11 +574,12 @@ export default function AddDataSourceModal({ open, onClose, onSuccess }: AddData
                       <tr className="border-b border-slate-200">
                         <th className="text-left px-3 py-2 font-medium text-slate-600">Column</th>
                         <th className="text-left px-3 py-2 font-medium text-slate-600">Type</th>
+                        <th className="text-left px-3 py-2 font-medium text-slate-600">Description</th>
                         <th className="text-left px-3 py-2 font-medium text-slate-600">Sample</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {fields.map((f) => (
+                      {fields.map((f, idx) => (
                         <tr key={f.name}>
                           <td className="px-3 py-2 font-mono text-xs text-slate-800">{f.name}</td>
                           <td className="px-3 py-2">
@@ -586,7 +587,20 @@ export default function AddDataSourceModal({ open, onClose, onSuccess }: AddData
                               {f.type}
                             </span>
                           </td>
-                          <td className="px-3 py-2 text-xs text-slate-500 truncate max-w-[300px]">
+                          <td className="px-3 py-2">
+                            <input
+                              type="text"
+                              value={f.description || ''}
+                              onChange={(e) => {
+                                const updated = [...fields];
+                                updated[idx] = { ...updated[idx], description: e.target.value || undefined };
+                                setFields(updated);
+                              }}
+                              placeholder="Optional"
+                              className="w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </td>
+                          <td className="px-3 py-2 text-xs text-slate-500 truncate max-w-[200px]">
                             {formatSampleValue(rows[0]?.[f.name])}
                           </td>
                         </tr>

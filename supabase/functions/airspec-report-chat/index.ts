@@ -65,11 +65,14 @@ Deno.serve(async (req: Request) => {
       .eq("enabled", true);
 
     const sourceContext = (dataSources ?? [])
-      .map((ds: { name: string; description: string | null; fields_json: { name: string; type: string }[] }) => {
+      .map((ds: { name: string; description: string | null; fields_json: { name: string; type: string; description?: string }[] }) => {
         const fieldList = ds.fields_json
-          .map((f: { name: string; type: string }) => `  - ${f.name} (${f.type})`)
+          .map((f: { name: string; type: string; description?: string }) => {
+            const desc = f.description ? ` — ${f.description}` : "";
+            return `    "${f.name}" (${f.type})${desc}`;
+          })
           .join("\n");
-        return `Source: "${ds.name}"${ds.description ? ` - ${ds.description}` : ""}\nFields:\n${fieldList}`;
+        return `Source: "${ds.name}"${ds.description ? ` — ${ds.description}` : ""}\n  FIELDS (EXHAUSTIVE — no other fields exist):\n${fieldList}\n  [END OF FIELDS]`;
       })
       .join("\n\n");
 
@@ -77,6 +80,8 @@ Deno.serve(async (req: Request) => {
 
 AVAILABLE DATA SOURCES:
 ${sourceContext || "No data sources are currently enabled. Inform the user they need to enable at least one data source in the Datasets section."}
+
+CRITICAL FIELD RULE: When referencing data fields in your requirements summary, ONLY use the exact field names listed above for each source. Do NOT invent, assume, or substitute any field name not explicitly listed. Field names are case-sensitive and exact.
 
 CAPABILITIES (AIRspec 1.1):
 - Charts via AIRMark grammar: bar, line, area, point/circle, arc (donut), tick, rule marks with x/y/color/size/theta encodings

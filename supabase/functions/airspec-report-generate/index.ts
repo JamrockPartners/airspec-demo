@@ -286,9 +286,15 @@ Deno.serve(async (req: Request) => {
         const sourceReference = sources
           .map((ds) => {
             const fieldDefs = ds.fields_json
-              .map((f) => `      "${f.name}": "${f.type}"`)
-              .join(",\n");
-            return `  - id: "${ds.slug}"  (name: "${ds.name}"${ds.description ? `, description: "${ds.description}"` : ""})\n    fields: {\n${fieldDefs}\n    }`;
+              .map((f) => {
+                const desc = f.description ? ` — ${f.description}` : "";
+                return `      "${f.name}" (${f.type})${desc}`;
+              })
+              .join("\n");
+            return `  SOURCE id: "${ds.slug}" (name: "${ds.name}"${ds.description ? `, ${ds.description}` : ""})
+    FIELDS (EXHAUSTIVE — no other fields exist for this source):
+${fieldDefs}
+    [END OF FIELDS for "${ds.slug}"]`;
           })
           .join("\n\n");
 
@@ -303,7 +309,9 @@ ${EXAMPLE_DOC}
 AVAILABLE DATA SOURCES (use the "id" value below as a dataset's "source"):
 ${sourceReference || "NO DATA SOURCES AVAILABLE — emit a document with a single emptyState component whose datasetId references a dataset with operation 'list' and the first available source, or if truly none, a single heading explaining there is no data."}
 
-OUTPUT: one JSON object that conforms to AIRspec 1.1 exactly. Field names are case-sensitive and exact. ANY field not in the spec above is a failure.`;
+CRITICAL FIELD RULE: Every field reference anywhere in the document — datasets (fields, field, dimensions.field, metrics.valueField, sort.field, filters.field), table columns (columns[].field), and chart encodings (encoding.x.field, encoding.y.field, encoding.color.field, etc.) — MUST exactly match one of the field names listed above for the corresponding source. Field names are case-sensitive and exact. Do NOT invent, assume, memorize from training data, or substitute any field name not explicitly listed above. If the user's request implies data that does not map to an available field, use the closest available field.
+
+OUTPUT: one JSON object that conforms to AIRspec 1.1 exactly. Schema keys are case-sensitive. ANY key not in the spec above is a failure.`;
 
         const anthropicAvailable = !isOpenAIModel(selectedModel) && anthropicKey;
         const openaiAvailable = isOpenAIModel(selectedModel) && openaiKey;
@@ -627,7 +635,7 @@ interface DataSourceRow {
   slug: string;
   name: string;
   description: string | null;
-  fields_json: { name: string; type: string }[];
+  fields_json: { name: string; type: string; description?: string }[];
 }
 
 const ID_RE = /^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/;
@@ -735,7 +743,8 @@ function validateSpec(spec: Record<string, unknown>, sources: DataSourceRow[]): 
     const sourceFields = sourceFieldMap.get(ds.source as string);
     const checkField = (f: unknown, ctx: string) => {
       if (typeof f === "string" && sourceFields && !sourceFields.has(f) && !f.includes(".")) {
-        errors.push(`${path}: ${ctx} field "${f}" is not a column in source "${ds.source}"`);
+        const validList = [...sourceFields].join(", ");
+        errors.push(`${path}: ${ctx} field "${f}" is not a column in source "${ds.source}". Valid fields are: [${validList}]`);
       }
     };
     if (Array.isArray(ds.fields)) ds.fields.forEach((f) => checkField(f, "fields"));
