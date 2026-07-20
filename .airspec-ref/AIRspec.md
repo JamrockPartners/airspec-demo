@@ -233,6 +233,8 @@ A catalog field SHOULD declare:
 }
 ```
 
+A field MAY declare `"derivable": false`; a source MAY declare `"derivationsEnabled": false`. The Data Broker MUST reject a derived expression that references a non-derivable field or belongs to a source with document derivations disabled.
+
 ### 6.2 Field references
 
 Everywhere a document references data, it references catalog field names (or dataset aliases) as plain strings. Field references MUST match `^[a-zA-Z][a-zA-Z0-9_.]{0,127}$`. Dots MAY denote catalog-declared nested fields only.
@@ -250,6 +252,7 @@ A Dataset is a declarative request against exactly one Source. Datasets contain 
 | `id` | string | MUST | Identifier. |
 | `source` | string | MUST | Catalog source ID. |
 | `operation` | string | MUST | `list`, `aggregate`, or `distinct`. |
+| `derived` | array | MAY | Structured row-level derived fields, evaluated before filtering and aggregation (§7.3.1). Maximum 8. |
 | `filters` | array | MAY | Filter objects (§7.4). |
 | `sort` | array | MAY | Sort objects (§7.5). |
 | `limit` | integer | MAY | Row cap; the Host clamps to catalog limits. |
@@ -298,7 +301,43 @@ A Dataset is a declarative request against exactly one Source. Datasets contain 
 
 **Dimensions.** `field` MUST be groupable per the catalog. `timeUnit` MAY be used only on date/datetime fields and only with catalog-declared units. `alias` names the output column; aliases share the field-reference grammar and MUST be unique within the dataset's output.
 
-**Metrics.** `operation` is one of `count`, `countDistinct`, `sum`, `average`, `minimum`, `maximum`, `median`. All except `count` REQUIRE `field`, and the operation MUST appear in that field's catalog `aggregations`. Hosts MAY support additional operations via catalog declaration.
+**Metrics.** Every metric MUST declare an `alias` and takes exactly one of two forms. An aggregate-form metric declares `operation` and, except for `count`, `field`; the operation is one of `count`, `countDistinct`, `sum`, `average`, `minimum`, `maximum`, `median` and MUST appear in the referenced field's catalog `aggregations`. A calc-form metric declares `calc` instead of `operation` or `field` and is evaluated after aggregation. `label` MAY supply display text for either form. Hosts MAY support additional aggregate operations via catalog declaration.
+
+#### 7.3.1 Row-level derived fields
+
+`dataset.derived` is an ordered array of at most 8 fields computed by the Data Broker before filters, grouping, and aggregation. Each entry has a REQUIRED `alias`, a REQUIRED structured `expr`, and an optional `label`:
+
+```json
+"derived": [
+  {
+    "alias": "line_revenue",
+    "label": "Line Revenue",
+    "expr": { "multiply": ["quantity", "price"] }
+  }
+]
+```
+
+Once defined, an alias is usable wherever a field is accepted, including later derived expressions, filters, list `fields`, aggregate metrics, and sorts. Derived aliases MAY reference only catalog fields or aliases earlier in the same `derived` array. Forward references and cycles MUST be rejected.
+
+#### 7.3.2 Structured arithmetic and calculated metrics
+
+A derived expression is a closed JSON tree with exactly one operation key: `add`, `subtract`, `multiply`, or `divide`. Operands are field references, finite JSON numbers, or nested expression nodes. `divide` has exactly two operands; the other operations have 2–8. Expression depth MUST NOT exceed 4 and total nodes per expression MUST NOT exceed 16.
+
+Calc-form metrics use the same tree after aggregation and MAY reference only sibling metric aliases. Hosts MUST resolve their dependency order and reject cycles:
+
+```json
+"metrics": [
+  { "operation": "sum", "field": "line_revenue", "alias": "revenue" },
+  { "operation": "count", "alias": "orders" },
+  { "alias": "avg_order_value", "calc": { "divide": ["revenue", "orders"] } }
+]
+```
+
+All referenced fields and aliases MUST be numeric. Arithmetic uses IEEE-754 double precision and folds operand arrays left-to-right. A null or missing operand produces null; division by zero produces null, never Infinity, NaN, or an error. Existing aggregations skip nulls; a calc-form metric with a null input produces null. Derived and metric output columns are keyed by their aliases verbatim. Aliases share one Dataset output namespace; collisions among source fields, derived fields, dimensions, and metrics MUST be rejected.
+
+This algebra does not authorize expression evaluation. Hosts MUST NOT parse or execute strings as formulas. Templates, interpolation, strings such as `datum.price * datum.quantity`, and identifier-encoded formulas such as `eq_price_times_quantity` are forbidden. Name-encoding an operation is the same unsafe grammar with worse syntax; the structured tree is the only arithmetic form.
+
+For authorization, a derived field inherits the highest classification of every component field. Policy is checked against that effective classification. Derivation grants no access to a component field the viewer could not already read. Catalog fields marked `derivable: false` and sources marked `derivationsEnabled: false` MUST reject derivation.
 
 ### 7.4 Filters
 
@@ -391,7 +430,7 @@ Return distinct values of a single filterable field, primarily to back select pa
 
 ### 7.8 Execution contract
 
-At run time the client submits only: document version reference, dataset `id`, validated parameter values, and pagination. The Data Broker loads the stored dataset definition, applies authorization, executes with server-held credentials, and returns rows shaped as an array of flat JSON objects keyed by field name or alias:
+At run time the client submits only: document version reference, dataset `id`, validated parameter values, and pagination. The Data Broker loads the stored dataset definition, applies authorization, compiles structured derived trees using only allowlisted arithmetic operators and catalog-mapped columns, computes row-level derivations before filters and aggregation, computes calc-form metrics after aggregation, executes with server-held credentials, and returns rows shaped as an array of flat JSON objects keyed by field name or alias. Document strings MUST never be assembled into executable backend expressions:
 
 ```json
 {
@@ -659,8 +698,14 @@ Each channel definition MAY include: `field`, `type` (`quantitative` | `temporal
 ### 10.6 Axes, legends, scales
 
 * `axis` and `legend` objects MAY set `title`, `labelAngle`, `labelLimit`, `labelOverlap`, `orient`, `grid`, `ticks`, `tickCount`, and `format` (a §11 format object). All values are JSON literals.
-* `scale` MAY set `type` (`linear`, `log`, `sqrt`, `pow`, `time`, `utc`, `ordinal`, `band`, `point`), `domain` (literal arrays only), `range` (color arrays or named schemes from the Host palette registry), `zero`, `nice`, `padding`, `scheme`.
+* `scale` MAY set `type` (`linear`, `log`, `sqrt`, `pow`, `time`, `utc`, `ordinal`, `band`, `point`), `domain` (literal arrays only), `range` (color arrays or named schemes from the Host palette registry), `zero`, `nice`, `padding`, `scheme`, and `reverse`.
 * All formatting flows through §11 format objects; AIRMark has no string-pattern mini-language of its own and no formatter callbacks.
+
+For positional channels, `axis.orient` selects the plot edge on which the axis is rendered: `left` or `right` for a y axis, and `bottom` or `top` for an x axis. An orientation incompatible with the channel MUST be rejected rather than silently ignored. On the nominal y axis of a horizontal chart, `right` moves the axis line, outward ticks, labels, and title to the plot's right edge. This is the center-spine label pattern for the left half of a mirrored pair.
+
+`reverse` is a boolean with default `false`. It flips the scale's pixel range **after** all domain, sort, and tick computation. The domain, tick values, and labels are identical to the non-reversed scale; only positions mirror. On quantitative and log scales, values increase toward the opposite edge, and a bar chart's zero baseline moves to the flipped side automatically. On band and ordinal scales, `reverse` reverses the **resolved** domain order: apply `sort`, then reverse, so it composes with sort rather than replacing it.
+
+The primary use is a diverging chart pair. A population pyramid uses two horizontal bar charts in adjacent grid cells with `scale: {"reverse": true}` on the left chart's quantitative channel. Both quantitative channels MUST declare the same explicit domain so bar lengths remain comparable across the spine. Category labels MAY remain on the outer left by using the left chart's default nominal axis and setting the right chart's nominal axis to `null`; alternatively, `axis: {"orient": "right"}` on the left chart places labels at the center spine.
 
 ### 10.7 Composition
 
@@ -825,7 +870,7 @@ A document MUST pass every layer below before it is stored as a renderable versi
 These requirements are normative for every conformance class and MUST NOT be relaxed by extensions.
 
 1. Documents are configuration. Hosts MUST NOT execute any document content as code and MUST NOT interpolate document strings into code, SQL, shell, or HTML without context-appropriate encoding.
-2. Documents MUST NOT contain, and validators MUST reject: URLs to data or scripts, credentials, tokens, connection strings, raw SQL, raw HTML, expression strings, or file paths.
+2. Documents MUST NOT contain, and validators MUST reject: URLs to data or scripts, credentials, tokens, connection strings, raw SQL, raw HTML, expression strings, identifier-encoded formulas, or file paths. The closed structured arithmetic tree in §7.3 is data, not a string-expression language, and MUST be compiled only through allowlisted operators and catalog-mapped fields.
 3. All data access flows through the Data Broker with server-held credentials and the *viewer's* authorization — never the author's, never the Generator's.
 4. Execution requests reference stored immutable versions; clients MUST NOT submit or modify dataset definitions at execution time.
 5. Tenant and account scoping are applied by the Broker independently of, and in addition to, any document filters. The Broker MUST NOT trust tenant/account identifiers appearing in a document.
@@ -1061,7 +1106,7 @@ A Generator conforms if every document it emits validates against the target Hos
 
 ## Appendix A: Reserved Property Names
 
-The following names are reserved at all levels for future versions and MUST NOT be used as extension or alias names: `airspec`, `meta`, `data`, `expr`, `signal`, `script`, `html`, `url`, `href`, `sql`, `credentials`, `token`.
+The following names are reserved at all levels for future versions and MUST NOT be used as extension or alias names: `airspec`, `meta`, `data`, `signal`, `script`, `html`, `url`, `href`, `sql`, `credentials`, `token`.
 
 ---
 

@@ -349,17 +349,69 @@
         "alias": { "$ref": "#/$defs/fieldRef" }
       }
     },
+    "derivedExpr": {
+      "type": "object",
+      "description": "Structured arithmetic: exactly one operation key. Operands are catalog/derived field references, numeric constants, or nested expressions. Depth <= 4 and total nodes <= 16 (Layer 2). No strings are ever parsed or evaluated.",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "add": {
+          "type": "array", "minItems": 2, "maxItems": 8,
+          "items": { "oneOf": [{ "$ref": "#/$defs/fieldRef" }, { "type": "number" }, { "$ref": "#/$defs/derivedExpr" }] }
+        },
+        "subtract": {
+          "type": "array", "minItems": 2, "maxItems": 8,
+          "items": { "oneOf": [{ "$ref": "#/$defs/fieldRef" }, { "type": "number" }, { "$ref": "#/$defs/derivedExpr" }] }
+        },
+        "multiply": {
+          "type": "array", "minItems": 2, "maxItems": 8,
+          "items": { "oneOf": [{ "$ref": "#/$defs/fieldRef" }, { "type": "number" }, { "$ref": "#/$defs/derivedExpr" }] }
+        },
+        "divide": {
+          "type": "array", "minItems": 2, "maxItems": 2,
+          "items": { "oneOf": [{ "$ref": "#/$defs/fieldRef" }, { "type": "number" }, { "$ref": "#/$defs/derivedExpr" }] }
+        }
+      }
+    },
+    "derivedField": {
+      "type": "object",
+      "required": ["alias", "expr"],
+      "additionalProperties": false,
+      "properties": {
+        "alias": { "type": "string", "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,63}$" },
+        "label": { "type": "string", "maxLength": 120 },
+        "expr": { "$ref": "#/$defs/derivedExpr" }
+      }
+    },
     "metric": {
       "type": "object",
-      "required": ["operation"],
       "additionalProperties": false,
       "properties": {
         "operation": { "$ref": "#/$defs/metricOperation" },
         "field": { "$ref": "#/$defs/fieldRef" },
-        "alias": { "$ref": "#/$defs/fieldRef" }
+        "alias": { "$ref": "#/$defs/fieldRef" },
+        "calc": {
+          "$ref": "#/$defs/derivedExpr",
+          "description": "Post-aggregation calculation over sibling metric aliases and numeric constants. Mutually exclusive with operation/field (Layer 2)."
+        },
+        "label": { "type": "string", "maxLength": 120 }
       },
-      "if": { "properties": { "operation": { "not": { "const": "count" } } } },
-      "then": { "required": ["field"] }
+      "if": {
+        "required": ["operation"],
+        "properties": { "operation": { "not": { "const": "count" } } }
+      },
+      "then": { "required": ["field"] },
+      "oneOf": [
+        {
+          "required": ["operation", "alias"],
+          "not": { "required": ["calc"] }
+        },
+        {
+          "required": ["calc", "alias"],
+          "not": { "anyOf": [{ "required": ["operation"] }, { "required": ["field"] }] }
+        }
+      ]
     },
     "metricOperation": {
       "enum": ["count", "countDistinct", "sum", "average", "minimum", "maximum", "median"]
@@ -373,6 +425,12 @@
         "id": { "$ref": "#/$defs/id" },
         "source": { "$ref": "#/$defs/id" },
         "operation": { "enum": ["list", "aggregate", "distinct"] },
+        "derived": {
+          "type": "array",
+          "description": "Row-level derived fields computed by the Data Broker before filtering and aggregation. Referenced elsewhere by alias like any field.",
+          "maxItems": 8,
+          "items": { "$ref": "#/$defs/derivedField" }
+        },
         "fields": {
           "type": "array",
           "items": { "$ref": "#/$defs/fieldRef" },
@@ -976,7 +1034,11 @@
         "scheme": { "type": "string", "maxLength": 50 },
         "zero": { "type": "boolean" },
         "nice": { "type": "boolean" },
-        "padding": { "type": "number", "minimum": 0, "maximum": 1 }
+        "padding": { "type": "number", "minimum": 0, "maximum": 1 },
+        "reverse": {
+          "type": "boolean",
+          "description": "Flip the scale's pixel range after domain and tick computation. On band/ordinal scales, reverses the resolved domain order (composes with sort). Enables mirrored/diverging axes such as population pyramids."
+        }
       }
     },
     "graphicTransform": {

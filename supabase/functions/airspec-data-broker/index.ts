@@ -61,6 +61,11 @@ Deno.serve(async (req: Request) => {
     const sourceRows = await fetchSourceRows(supabase, resolved.source);
     let rows: Record<string, unknown>[] = sourceRows;
 
+    // Compute derived fields (§7.3.1) before filtering and aggregation.
+    if (resolved.derived && resolved.derived.length > 0) {
+      rows = applyDerived(rows, resolved.derived);
+    }
+
     // Apply filters.
     if (resolved.filters && resolved.filters.length > 0) {
       rows = applyFilters(rows, resolved.filters, params);
@@ -115,7 +120,7 @@ interface ParameterDef {
 }
 
 interface Dimension { field: string; timeUnit?: string; alias?: string }
-interface Metric { operation: string; field?: string; alias?: string }
+interface Metric { operation?: string; field?: string; alias?: string; calc?: DerivedExpr; label?: string }
 interface Sort { field: string; direction: "ascending" | "descending" }
 interface Filter { field?: string; operator?: string; value?: unknown; parameter?: string; boolean?: string; filters?: Filter[] }
 interface Binding<T> { parameter: string; cases: { equals: unknown; value: T }[]; default: T }
@@ -123,10 +128,26 @@ interface DatasetBindings {
   fields?: Binding<string[]>; field?: Binding<string>; dimensions?: Binding<Dimension[]>;
   metrics?: Binding<Metric[]>; filters?: Binding<Filter[]>; sort?: Binding<Sort[]>; limit?: Binding<number>;
 }
+
+type DerivedExprOperand = string | number | DerivedExpr;
+interface DerivedExpr {
+  add?: DerivedExprOperand[];
+  subtract?: DerivedExprOperand[];
+  multiply?: DerivedExprOperand[];
+  divide?: [DerivedExprOperand, DerivedExprOperand];
+}
+
+interface DerivedField {
+  alias: string;
+  expr: DerivedExpr;
+  label?: string;
+}
+
 interface DatasetDef {
   id: string;
   source: string;
   operation: "list" | "aggregate" | "distinct";
+  derived?: DerivedField[];
   fields?: string[];
   field?: string;
   dimensions?: Dimension[];
@@ -141,6 +162,7 @@ interface ResolvedDataset {
   id: string;
   source: string;
   operation: "list" | "aggregate" | "distinct";
+  derived?: DerivedField[];
   fields?: string[];
   field?: string;
   dimensions?: Dimension[];
@@ -164,6 +186,7 @@ function resolveDataset(
     id: def.id,
     source: def.source,
     operation: def.operation,
+    derived: def.derived,
     fields: def.fields,
     field: def.field,
     dimensions: def.dimensions,
@@ -393,6 +416,80 @@ function pickFields(row: Record<string, unknown>, fields: string[]): Record<stri
   return picked;
 }
 
+// ---------------------------------------------------------------------------
+// Derived field evaluation (AIRspec 1.1 §7.3.1)
+// Structured arithmetic: closed JSON tree, never parsed strings.
+// ---------------------------------------------------------------------------
+
+function evaluateDerivedExpr(expr: DerivedExpr, row: Record<string, unknown>): number | null {
+  const resolveOperand = (op: DerivedExprOperand): number | null => {
+    if (typeof op === "number") return Number.isFinite(op) ? op : null;
+    if (typeof op === "string") {
+      const v = row[op];
+      if (v === null || v === undefined) return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    }
+    if (typeof op === "object" && op !== null) return evaluateDerivedExpr(op, row);
+    return null;
+  };
+
+  const evalOp = (operands: DerivedExprOperand[] | undefined, fn: (a: number, b: number) => number): number | null => {
+    if (!operands || operands.length < 2) return null;
+    let result = resolveOperand(operands[0]);
+    if (result === null) return null;
+    for (let i = 1; i < operands.length; i++) {
+      const val = resolveOperand(operands[i]);
+      if (val === null) return null;
+      result = fn(result, val);
+      if (!Number.isFinite(result)) return null;
+    }
+    return result;
+  };
+
+  if (expr.add) return evalOp(expr.add, (a, b) => a + b);
+  if (expr.subtract) return evalOp(expr.subtract, (a, b) => a - b);
+  if (expr.multiply) return evalOp(expr.multiply, (a, b) => a * b);
+  if (expr.divide) {
+    if (!expr.divide || expr.divide.length !== 2) return null;
+    const num = resolveOperand(expr.divide[0]);
+    const den = resolveOperand(expr.divide[1]);
+    if (num === null || den === null || den === 0) return null;
+    const result = num / den;
+    return Number.isFinite(result) ? result : null;
+  }
+  return null;
+}
+
+function applyDerived(
+  rows: Record<string, unknown>[],
+  derived: DerivedField[] | undefined,
+): Record<string, unknown>[] {
+  if (!derived || derived.length === 0) return rows;
+  return rows.map((row) => {
+    const extended = { ...row };
+    for (const d of derived) {
+      extended[d.alias] = evaluateDerivedExpr(d.expr, extended);
+    }
+    return extended;
+  });
+}
+
+function evaluateCalcMetrics(
+  resultRows: Record<string, unknown>[],
+  metrics: Metric[],
+): Record<string, unknown>[] {
+  const calcMetrics = metrics.filter((m) => m.calc && m.alias);
+  if (calcMetrics.length === 0) return resultRows;
+  return resultRows.map((row) => {
+    const extended = { ...row };
+    for (const m of calcMetrics) {
+      extended[m.alias!] = evaluateDerivedExpr(m.calc!, extended);
+    }
+    return extended;
+  });
+}
+
 // AIRspec 1.1 filter operators.
 function applyFilters(
   rows: Record<string, unknown>[],
@@ -460,13 +557,21 @@ function matchSingleFilter(row: Record<string, unknown>, filter: Filter, paramet
 function executeAggregate(rows: Record<string, unknown>[], def: ResolvedDataset): Record<string, unknown>[] {
   const dimensions = def.dimensions ?? [];
   const metrics = def.metrics ?? [];
+  const standardMetrics = metrics.filter((m) => m.operation);
+  const calcMetrics = metrics.filter((m) => m.calc);
 
   // No dimensions -> single aggregate row.
   if (dimensions.length === 0) {
     const result: Record<string, unknown> = {};
-    for (const m of metrics) {
+    for (const m of standardMetrics) {
       const alias = m.alias ?? defaultMetricAlias(m);
       result[alias] = computeMetric(rows, m);
+    }
+    // Calc-form metrics: evaluated post-aggregation referencing sibling aliases.
+    if (calcMetrics.length > 0) {
+      for (const m of calcMetrics) {
+        result[m.alias!] = evaluateDerivedExpr(m.calc!, result);
+      }
     }
     return [result];
   }
@@ -488,9 +593,15 @@ function executeAggregate(rows: Record<string, unknown>[], def: ResolvedDataset)
       const alias = d.alias ?? d.field;
       result[alias] = groupRows[0][alias];
     }
-    for (const m of metrics) {
+    for (const m of standardMetrics) {
       const alias = m.alias ?? defaultMetricAlias(m);
       result[alias] = computeMetric(groupRows, m);
+    }
+    // Calc-form metrics: evaluated post-aggregation referencing sibling aliases.
+    if (calcMetrics.length > 0) {
+      for (const m of calcMetrics) {
+        result[m.alias!] = evaluateDerivedExpr(m.calc!, result);
+      }
     }
     results.push(result);
   }

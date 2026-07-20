@@ -37,16 +37,31 @@ PARAMETER (required: id, type, label):
   dateRange.default: { relative:"today|yesterday|last7Days|last30Days|last90Days|last365Days|weekToDate|monthToDate|quarterToDate|yearToDate|previousWeek|previousMonth|previousQuarter|previousYear" } | { start:"YYYY-MM-DD", end:"YYYY-MM-DD" }
 
 DATASET (required: id, source, operation):
-  { id, source, operation, fields?, field?, dimensions?, metrics?, filters?, sort?, limit?, bindings?, pagination? }
+  { id, source, operation, derived?, fields?, field?, dimensions?, metrics?, filters?, sort?, limit?, bindings?, pagination? }
   operation: "list" | "aggregate" | "distinct"
     list       -> requires fields (or bindings.fields)
     aggregate  -> requires metrics (or bindings.metrics); optional dimensions
     distinct   -> requires field (or bindings.field)
+  derived: [{ alias, expr, label? }]           // max 8; row-level computed fields, evaluated BEFORE filters and aggregation
+    alias: identifier for the computed field (usable in fields, metrics, filters, sort, encodings)
+    expr: structured arithmetic JSON tree (see DERIVED EXPR below)
+    Derived aliases MAY reference catalog fields or aliases earlier in the same derived array. Forward refs and cycles MUST be rejected.
   fields: string[]                             // list operation
   field: string                                // distinct operation
   dimensions: [{ field, timeUnit?:"day|week|month|quarter|year", alias? }]  // aggregate
-  metrics: [{ operation, field?, alias? }]     // aggregate; field REQUIRED unless operation=="count"
+  metrics: [{ operation, field?, alias (REQUIRED) }] | [{ calc, alias (REQUIRED), label? }]
+    Standard metric: { operation, field?, alias }  // field REQUIRED unless operation=="count"
+    Calc-form metric: { calc: derivedExpr, alias } // post-aggregation calc; mutually exclusive with operation/field
     operation: "count"|"countDistinct"|"sum"|"average"|"minimum"|"maximum"|"median"
+
+DERIVED EXPR (structured arithmetic — the ONLY way to compute fields; NEVER use string expressions):
+  Exactly one operation key per node: "add", "subtract", "multiply", or "divide"
+  Operands are: field references (strings), numeric constants (numbers), or nested derivedExpr objects
+  "divide" has exactly 2 operands; others have 2-8
+  Depth max 4, total nodes max 16
+  Example: { "multiply": ["quantity", "unit_price"] }
+  Example: { "divide": [{ "subtract": ["revenue", "cost"] }, "revenue"] }
+  null/missing operand → null; division by zero → null
   filters: Filter[]                            // max 20
     field filter: { field, operator, value?, parameter? }   // "parameter" NOT "parameterRef"
     filter group: { boolean:"and"|"or", filters:Filter[] }
@@ -312,6 +327,8 @@ ${sourceReference || "NO DATA SOURCES AVAILABLE — emit a document with a singl
 CRITICAL FIELD RULE: Every field reference anywhere in the document — datasets (fields, field, dimensions.field, metrics.valueField, sort.field, filters.field), table columns (columns[].field), and chart encodings (encoding.x.field, encoding.y.field, encoding.color.field, etc.) — MUST exactly match one of the field names listed above for the corresponding source. Field names are case-sensitive and exact. Do NOT invent, assume, memorize from training data, or substitute any field name not explicitly listed above. If the user's request implies data that does not map to an available field, use the closest available field.
 
 CRITICAL FORMAT RULE: Number/date formats are ALWAYS objects ({type, maximumFractionDigits, notation, etc.}), NEVER d3 format strings like ",", ".2f", or "%". For grouped digits use {"type":"number","useGrouping":true}; for compact use {"type":"number","notation":"compact"}; for no decimals use {"type":"number","maximumFractionDigits":0}. Axis ticks do NOT group by default.
+
+CRITICAL DERIVED RULE: When the user asks for computed fields (e.g., "revenue per unit", "profit margin", "price times quantity"), use the structured "derived" array on the dataset with a JSON arithmetic tree — NEVER string expressions. Example: derived: [{ "alias": "line_revenue", "expr": { "multiply": ["quantity", "unit_price"] } }]. For post-aggregation calculations (e.g., "average order value = revenue / orders"), use a calc-form metric: { "calc": { "divide": ["revenue", "orders"] }, "alias": "avg_order_value" }. Metric aliases are REQUIRED for ALL metrics (standard and calc). The derived alias is then usable in fields, metrics, filters, sort, and chart encodings just like any catalog field.
 
 OUTPUT: one JSON object that conforms to AIRspec 1.1 exactly. Schema keys are case-sensitive. ANY key not in the spec above is a failure.`;
 
@@ -724,7 +741,7 @@ function validateSpec(spec: Record<string, unknown>, sources: DataSourceRow[]): 
     if (!ID_RE.test(did)) errors.push(`${path}: id "${did}" is not a valid id`);
     if (datasetIds.has(did)) errors.push(`${path}: duplicate dataset id "${did}"`);
     datasetIds.add(did);
-    const allowed = ["id", "source", "operation", "fields", "field", "dimensions", "metrics", "filters", "sort", "limit", "bindings", "pagination"];
+    const allowed = ["id", "source", "operation", "derived", "fields", "field", "dimensions", "metrics", "filters", "sort", "limit", "bindings", "pagination"];
     for (const k of Object.keys(ds)) if (!allowed.includes(k) && !k.startsWith("x-")) errors.push(`${path}: unknown field "${k}"`);
     if (!validSourceIds.has(ds.source as string)) errors.push(`${path}: source "${ds.source}" is not an available data source id`);
     if (!ID_RE.test(ds.source as string)) errors.push(`${path}: source "${ds.source}" is not a valid id (must match /^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/, cannot be a raw UUID)`);
@@ -743,9 +760,18 @@ function validateSpec(spec: Record<string, unknown>, sources: DataSourceRow[]): 
     if (ds.operation === "distinct" && !ds.field && !hasBinding("field")) errors.push(`${path}: distinct operation requires 'field' or bindings.field`);
     // validate literal/binding field refs against source columns
     const sourceFields = sourceFieldMap.get(ds.source as string);
+    // Collect derived aliases so they're valid field refs within this dataset
+    const derivedAliases = new Set<string>();
+    if (Array.isArray(ds.derived)) {
+      for (const d of ds.derived as { alias?: string; expr?: unknown }[]) {
+        if (typeof d.alias === "string") derivedAliases.add(d.alias);
+        if (!d.alias) errors.push(`${path}.derived: entry missing required 'alias'`);
+        if (!d.expr || typeof d.expr !== "object") errors.push(`${path}.derived: entry "${d.alias}" missing required 'expr' object`);
+      }
+    }
     const checkField = (f: unknown, ctx: string) => {
-      if (typeof f === "string" && sourceFields && !sourceFields.has(f) && !f.includes(".")) {
-        const validList = [...sourceFields].join(", ");
+      if (typeof f === "string" && sourceFields && !sourceFields.has(f) && !derivedAliases.has(f) && !f.includes(".")) {
+        const validList = [...sourceFields, ...derivedAliases].join(", ");
         errors.push(`${path}: ${ctx} field "${f}" is not a column in source "${ds.source}". Valid fields are: [${validList}]`);
       }
     };
@@ -753,9 +779,16 @@ function validateSpec(spec: Record<string, unknown>, sources: DataSourceRow[]): 
     if (typeof ds.field === "string") checkField(ds.field, "field");
     if (Array.isArray(ds.dimensions)) ds.dimensions.forEach((d: Record<string, unknown>) => checkField(d.field, "dimensions"));
     if (Array.isArray(ds.metrics)) ds.metrics.forEach((m: Record<string, unknown>) => {
-      if (!METRIC_OPS.has(m.operation as string)) errors.push(`${path}: metric operation "${m.operation}" invalid`);
-      if (m.operation !== "count" && !m.field) errors.push(`${path}: metric with operation "${m.operation}" requires 'field'`);
-      checkField(m.field, "metrics");
+      if (m.calc) {
+        // Calc-form metric: requires alias, no operation/field
+        if (!m.alias) errors.push(`${path}: calc-form metric requires 'alias'`);
+        if (m.operation) errors.push(`${path}: calc-form metric must not have 'operation'`);
+      } else {
+        // Standard metric
+        if (!METRIC_OPS.has(m.operation as string)) errors.push(`${path}: metric operation "${m.operation}" invalid`);
+        if (m.operation !== "count" && !m.field) errors.push(`${path}: metric with operation "${m.operation}" requires 'field'`);
+        checkField(m.field, "metrics");
+      }
     });
     if (Array.isArray(ds.filters)) ds.filters.forEach((f, fi) => validateFilter(f as Record<string, unknown>, parameterIds, sourceFields, `${path}.filters[${fi}]`, errors));
     if (Array.isArray(ds.sort)) ds.sort.forEach((s: Record<string, unknown>) => {
@@ -796,7 +829,7 @@ function validateSpec(spec: Record<string, unknown>, sources: DataSourceRow[]): 
       validateBinding("fields", (v) => { if (!Array.isArray(v)) errors.push(`fields binding value must be array`); else v.forEach((f) => checkField(f, "fields binding")); });
       validateBinding("field", (v) => checkField(v, "field binding"));
       validateBinding("dimensions", (v) => { if (!Array.isArray(v)) errors.push(`dimensions binding value must be array`); else v.forEach((d: Record<string, unknown>) => checkField(d.field, "dimensions binding")); });
-      validateBinding("metrics", (v) => { if (!Array.isArray(v)) errors.push(`metrics binding value must be array`); else v.forEach((m: Record<string, unknown>) => { if (!METRIC_OPS.has(m.operation as string)) errors.push(`metrics binding: bad operation`); checkField(m.field, "metrics binding"); }); });
+      validateBinding("metrics", (v) => { if (!Array.isArray(v)) errors.push(`metrics binding value must be array`); else v.forEach((m: Record<string, unknown>) => { if (m.calc) { if (!m.alias) errors.push(`metrics binding: calc metric requires alias`); } else { if (!METRIC_OPS.has(m.operation as string)) errors.push(`metrics binding: bad operation`); checkField(m.field, "metrics binding"); } }); });
       validateBinding("filters", (v) => { if (!Array.isArray(v)) errors.push(`filters binding value must be array`); else v.forEach((f, fi) => validateFilter(f as Record<string, unknown>, parameterIds, sourceFields, `${path}.filters binding[${fi}]`, errors)); });
       validateBinding("sort", (v) => { if (!Array.isArray(v)) errors.push(`sort binding value must be array`); else v.forEach((s: Record<string, unknown>) => { if (s.direction !== "ascending" && s.direction !== "descending") errors.push(`sort binding: bad direction`); }); });
       validateBinding("limit", (v) => { if (typeof v !== "number" || v < 1) errors.push(`limit binding value must be positive integer`); });

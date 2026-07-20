@@ -1,10 +1,30 @@
-import type { AirspecDocument, AirspecParameter } from '../../types/airspec';
+import type { AirspecDocument } from '../../../../types/airspec';
 
 const ID_RE = /^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/;
+const DERIVED_OPS = new Set(['add', 'subtract', 'multiply', 'divide']);
 
 export interface ValidationError {
   path: string;
   message: string;
+}
+
+function validateDerivedExpr(expr: Record<string, unknown>, path: string, errors: ValidationError[]): void {
+  const keys = Object.keys(expr).filter((k) => DERIVED_OPS.has(k));
+  if (keys.length !== 1) {
+    errors.push({ path, message: `derivedExpr must have exactly one operation key (add/subtract/multiply/divide), got: [${Object.keys(expr).join(', ')}]` });
+    return;
+  }
+  const op = keys[0];
+  const operands = expr[op];
+  if (!Array.isArray(operands)) {
+    errors.push({ path: `${path}.${op}`, message: 'operands must be an array' });
+    return;
+  }
+  if (op === 'divide' && operands.length !== 2) {
+    errors.push({ path: `${path}.${op}`, message: '"divide" requires exactly 2 operands' });
+  } else if (operands.length < 2) {
+    errors.push({ path: `${path}.${op}`, message: `"${op}" requires at least 2 operands` });
+  }
 }
 
 export function validateDocument(doc: AirspecDocument): ValidationError[] {
@@ -45,6 +65,33 @@ export function validateDocument(doc: AirspecDocument): ValidationError[] {
         path: `datasets[${ds.id}].source`,
         message: `"${ds.source}" is not a valid id (must start with a letter, cannot be a raw UUID)`,
       });
+    }
+    // Validate derived fields (§7.3.1)
+    if (ds.derived) {
+      for (let i = 0; i < ds.derived.length; i++) {
+        const d = ds.derived[i];
+        const dPath = `datasets[${ds.id}].derived[${i}]`;
+        if (!d.alias) errors.push({ path: dPath, message: 'derived field missing required "alias"' });
+        if (!d.expr || typeof d.expr !== 'object') {
+          errors.push({ path: dPath, message: 'derived field missing required "expr" object' });
+        } else {
+          validateDerivedExpr(d.expr, `${dPath}.expr`, errors);
+        }
+      }
+    }
+    // Validate metrics (standard and calc-form)
+    if (ds.metrics) {
+      for (let i = 0; i < ds.metrics.length; i++) {
+        const m = ds.metrics[i] as Record<string, unknown>;
+        const mPath = `datasets[${ds.id}].metrics[${i}]`;
+        if ('calc' in m) {
+          if (!m.alias) errors.push({ path: mPath, message: 'calc-form metric requires "alias"' });
+          if (m.operation) errors.push({ path: mPath, message: 'calc-form metric must not have "operation" (mutually exclusive with "calc")' });
+          if (m.calc && typeof m.calc === 'object') {
+            validateDerivedExpr(m.calc as Record<string, unknown>, `${mPath}.calc`, errors);
+          }
+        }
+      }
     }
     if (ds.bindings) {
       for (const [prop, b] of Object.entries(ds.bindings)) {

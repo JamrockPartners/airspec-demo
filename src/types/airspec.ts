@@ -137,11 +137,23 @@ export interface AirspecDimension {
 export type AirspecMetricOperation =
   | 'count' | 'countDistinct' | 'sum' | 'average' | 'minimum' | 'maximum' | 'median';
 
-export interface AirspecMetric {
-  operation: AirspecMetricOperation;
-  field?: string;
-  alias?: string;
+export type AirspecDerivedExpr = {
+  add?: (string | number | AirspecDerivedExpr)[];
+  subtract?: (string | number | AirspecDerivedExpr)[];
+  multiply?: (string | number | AirspecDerivedExpr)[];
+  divide?: [string | number | AirspecDerivedExpr, string | number | AirspecDerivedExpr];
+};
+
+export interface AirspecDerivedField {
+  alias: string;
+  expr: AirspecDerivedExpr;
+  label?: string;
 }
+
+export type AirspecMetric =
+  | { operation: AirspecMetricOperation; field?: string; alias: string; label?: string }
+  | { calc: AirspecDerivedExpr; alias: string; label?: string };
+
 
 export type AirspecDatasetBindings = {
   fields?: AirspecBinding<string[]>;
@@ -163,6 +175,7 @@ export interface AirspecDataset {
   id: string;
   source: string;
   operation: 'list' | 'aggregate' | 'distinct';
+  derived?: AirspecDerivedField[];
   fields?: string[];
   field?: string;
   dimensions?: AirspecDimension[];
