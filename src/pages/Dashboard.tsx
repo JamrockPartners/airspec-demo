@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, FileBarChart, Database, Loader2, Sparkles, ArrowRight, Clock } from 'lucide-react';
 import { reportService, dataSourceService } from '../services';
-import type { Report, DataSource } from '../types/airspec';
+import type { Report, DataSource, ReportVersion, AirspecDocument } from '../types/airspec';
 import { useReportChat } from '../hooks/useReportChat';
 import ReportBuilderModal from '../components/features/ReportBuilderModal';
+import { ReportProvider } from '../components/features/reports/renderer/ReportContext';
+import LayoutWalker from '../components/features/reports/renderer/LayoutWalker';
 
 type BentoSize = 'large' | 'medium' | 'small';
 
@@ -17,69 +19,6 @@ const BENTO_PATTERN: BentoSize[] = [
 
 function getBentoSize(index: number): BentoSize {
   return BENTO_PATTERN[index % BENTO_PATTERN.length];
-}
-
-const ACCENT_PALETTES = [
-  { bg: 'bg-blue-50', border: 'border-blue-100', icon: 'text-blue-500', hover: 'hover:border-blue-300 hover:shadow-blue-100/50' },
-  { bg: 'bg-emerald-50', border: 'border-emerald-100', icon: 'text-emerald-500', hover: 'hover:border-emerald-300 hover:shadow-emerald-100/50' },
-  { bg: 'bg-amber-50', border: 'border-amber-100', icon: 'text-amber-500', hover: 'hover:border-amber-300 hover:shadow-amber-100/50' },
-  { bg: 'bg-rose-50', border: 'border-rose-100', icon: 'text-rose-500', hover: 'hover:border-rose-300 hover:shadow-rose-100/50' },
-  { bg: 'bg-cyan-50', border: 'border-cyan-100', icon: 'text-cyan-500', hover: 'hover:border-cyan-300 hover:shadow-cyan-100/50' },
-  { bg: 'bg-slate-50', border: 'border-slate-200', icon: 'text-slate-500', hover: 'hover:border-slate-300 hover:shadow-slate-100/50' },
-];
-
-function BentoCard({ report, index, onClick }: { report: Report; index: number; onClick: () => void }) {
-  const size = getBentoSize(index);
-  const palette = ACCENT_PALETTES[index % ACCENT_PALETTES.length];
-  const age = formatRelativeTime(report.updated_at);
-
-  const sizeClasses = {
-    large: 'col-span-2 row-span-2 md:col-span-2',
-    medium: 'col-span-2 row-span-1 md:col-span-1',
-    small: 'col-span-1 row-span-1',
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      className={`group relative flex flex-col justify-between p-5 rounded-2xl border ${palette.border} ${palette.bg} ${palette.hover} shadow-sm hover:shadow-md transition-all duration-200 text-left overflow-hidden ${sizeClasses[size]}`}
-    >
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-        <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-full ${palette.bg} blur-2xl`} />
-      </div>
-
-      <div className="relative z-10 flex-1 flex flex-col">
-        <div className="flex items-start justify-between gap-2">
-          <div className={`p-2 rounded-lg ${palette.bg} border ${palette.border}`}>
-            <FileBarChart size={size === 'large' ? 22 : 16} className={palette.icon} />
-          </div>
-          <ArrowRight size={14} className="text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all mt-1" />
-        </div>
-
-        <div className="mt-3 flex-1">
-          <h3 className={`font-semibold text-slate-900 leading-tight ${size === 'large' ? 'text-lg' : 'text-sm'} ${size === 'small' ? 'line-clamp-2' : ''}`}>
-            {report.name}
-          </h3>
-          {report.description && size !== 'small' && (
-            <p className={`text-slate-500 mt-1.5 ${size === 'large' ? 'text-sm line-clamp-3' : 'text-xs line-clamp-2'}`}>
-              {report.description}
-            </p>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1.5 mt-3">
-          <Clock size={11} className="text-slate-400" />
-          <span className="text-[11px] text-slate-400 font-medium">{age}</span>
-          {report.model && size !== 'small' && (
-            <>
-              <span className="text-slate-300 mx-1">·</span>
-              <span className="text-[11px] text-slate-400 font-medium truncate">{report.model}</span>
-            </>
-          )}
-        </div>
-      </div>
-    </button>
-  );
 }
 
 function formatRelativeTime(dateStr: string): string {
@@ -97,10 +36,100 @@ function formatRelativeTime(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function BentoCard({
+  report,
+  index,
+  spec,
+  versionId,
+  onClick,
+}: {
+  report: Report;
+  index: number;
+  spec: AirspecDocument | null;
+  versionId: string | null;
+  onClick: () => void;
+}) {
+  const size = getBentoSize(index);
+  const age = formatRelativeTime(report.updated_at);
+
+  const sizeClasses = {
+    large: 'col-span-2 row-span-2',
+    medium: 'col-span-2 row-span-1 md:col-span-1 row-span-2',
+    small: 'col-span-1 row-span-1',
+  };
+
+  const scaleFactors = {
+    large: 0.35,
+    medium: 0.25,
+    small: 0.22,
+  };
+
+  const innerWidths = {
+    large: 1200,
+    medium: 900,
+    small: 800,
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      className={`group relative flex flex-col rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-lg shadow-sm transition-all duration-200 text-left overflow-hidden ${sizeClasses[size]}`}
+    >
+      {/* Chart preview area */}
+      <div className="flex-1 relative overflow-hidden rounded-t-2xl bg-slate-50/50">
+        {spec && spec.layout ? (
+          <div
+            className="absolute inset-0 origin-top-left pointer-events-none select-none"
+            style={{
+              transform: `scale(${scaleFactors[size]})`,
+              width: `${innerWidths[size]}px`,
+              height: `${100 / scaleFactors[size]}%`,
+            }}
+          >
+            <div className="p-4">
+              <ReportProvider document={spec} versionId={versionId}>
+                <LayoutWalker node={spec.layout} />
+              </ReportProvider>
+            </div>
+          </div>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <FileBarChart size={32} className="text-slate-200" />
+          </div>
+        )}
+
+        {/* Fade overlay at bottom of preview */}
+        <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent" />
+      </div>
+
+      {/* Info footer */}
+      <div className="relative z-10 px-4 py-3 border-t border-slate-100 bg-white rounded-b-2xl">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className={`font-semibold text-slate-900 leading-tight truncate ${size === 'large' ? 'text-sm' : 'text-xs'}`}>
+            {report.name}
+          </h3>
+          <ArrowRight size={12} className="text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+        </div>
+        <div className="flex items-center gap-1.5 mt-1">
+          <Clock size={10} className="text-slate-400" />
+          <span className="text-[10px] text-slate-400 font-medium">{age}</span>
+          {report.model && size !== 'small' && (
+            <>
+              <span className="text-slate-300 mx-0.5">·</span>
+              <span className="text-[10px] text-slate-400 font-medium truncate">{report.model}</span>
+            </>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [reports, setReports] = useState<Report[]>([]);
   const [sources, setSources] = useState<DataSource[]>([]);
+  const [versions, setVersions] = useState<Record<string, ReportVersion>>({});
   const [loading, setLoading] = useState(true);
   const [builderOpen, setBuilderOpen] = useState(false);
 
@@ -115,6 +144,20 @@ export default function Dashboard() {
         ]);
         setReports(r);
         setSources(s);
+
+        // Fetch all current versions for report previews
+        const versionIds = r
+          .map((rep) => rep.current_version_id)
+          .filter((id): id is string => id !== null);
+
+        if (versionIds.length > 0) {
+          const versionList = await reportService.getVersionsByIds(versionIds);
+          const versionMap: Record<string, ReportVersion> = {};
+          for (const v of versionList) {
+            versionMap[v.id] = v;
+          }
+          setVersions(versionMap);
+        }
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
       } finally {
@@ -226,15 +269,23 @@ export default function Dashboard() {
                   </button>
                 )}
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 auto-rows-[140px]">
-                {reports.map((report, i) => (
-                  <BentoCard
-                    key={report.id}
-                    report={report}
-                    index={i}
-                    onClick={() => navigate(`/reports/${report.id}`)}
-                  />
-                ))}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 auto-rows-[160px]">
+                {reports.map((report, i) => {
+                  const version = report.current_version_id
+                    ? versions[report.current_version_id]
+                    : null;
+                  const spec = (version?.report_spec_json as AirspecDocument) ?? null;
+                  return (
+                    <BentoCard
+                      key={report.id}
+                      report={report}
+                      index={i}
+                      spec={spec}
+                      versionId={version?.id ?? null}
+                      onClick={() => navigate(`/reports/${report.id}`)}
+                    />
+                  );
+                })}
               </div>
             </div>
           )}

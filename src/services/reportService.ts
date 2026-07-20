@@ -179,6 +179,17 @@ export async function getReportWithVersion(reportId: string): Promise<{
   return { report, version };
 }
 
+export async function getVersionsByIds(versionIds: string[]): Promise<ReportVersion[]> {
+  if (versionIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from('airspec_report_versions')
+    .select('*')
+    .in('id', versionIds);
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
 export async function fetchDataForReport(
   versionId: string,
   datasetId: string,
