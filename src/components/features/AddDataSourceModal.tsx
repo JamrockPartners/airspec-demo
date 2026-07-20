@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Upload, FileText, Link2, Loader2, RefreshCw, CheckCircle2, AlertCircle, Braces } from 'lucide-react';
 import Modal from '../ui/Modal';
-import { parseCsvText, coerceRowValues } from '../../lib/csvParser';
+import { parseCsvText, coerceRowValues, slugifyFieldName } from '../../lib/csvParser';
 import { dataSourceService } from '../../services';
 import type { DataSourceField } from '../../types/airspec';
 
@@ -55,7 +55,7 @@ function inferFieldsFromRows(rows: Record<string, unknown>[]): DataSourceField[]
       else if (numericCount / nonEmptyCount > 0.9) type = 'number';
       else if (booleanCount / nonEmptyCount > 0.9) type = 'boolean';
     }
-    return { name, type };
+    return { name, key: slugifyFieldName(name), type };
   });
 }
 
@@ -288,7 +288,11 @@ export default function AddDataSourceModal({ open, onClose, onSuccess }: AddData
           fields_json: fields,
           row_count: coercedRows.length,
         });
-        await dataSourceService.uploadDatasetRows(source.id, coercedRows);
+        await dataSourceService.uploadDatasetRows(
+          source.id,
+          coercedRows,
+          fields.map((f) => ({ name: f.name, key: f.key }))
+        );
       } else {
         await dataSourceService.createDataSource({
           name: name.trim(),
@@ -573,7 +577,7 @@ export default function AddDataSourceModal({ open, onClose, onSuccess }: AddData
                     <thead className="sticky top-0 bg-slate-50 z-10">
                       <tr className="border-b border-slate-200">
                         <th className="text-left px-3 py-2 font-medium text-slate-600">Column</th>
-                        <th className="text-left px-3 py-2 font-medium text-slate-600">Type</th>
+                        <th className="text-left px-3 py-2 font-medium text-slate-600">Key</th>
                         <th className="text-left px-3 py-2 font-medium text-slate-600">Description</th>
                         <th className="text-left px-3 py-2 font-medium text-slate-600">Sample</th>
                       </tr>
@@ -581,11 +585,22 @@ export default function AddDataSourceModal({ open, onClose, onSuccess }: AddData
                     <tbody className="divide-y divide-slate-100">
                       {fields.map((f, idx) => (
                         <tr key={f.name}>
-                          <td className="px-3 py-2 font-mono text-xs text-slate-800">{f.name}</td>
                           <td className="px-3 py-2">
-                            <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded font-medium">
-                              {f.type}
-                            </span>
+                            <span className="font-mono text-xs text-slate-800">{f.name}</span>
+                            <span className="ml-1.5 text-[10px] text-slate-400">{f.type}</span>
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="text"
+                              value={f.key || ''}
+                              onChange={(e) => {
+                                const val = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+                                const updated = [...fields];
+                                updated[idx] = { ...updated[idx], key: val };
+                                setFields(updated);
+                              }}
+                              className="w-full px-2 py-1 text-xs font-mono border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                            />
                           </td>
                           <td className="px-3 py-2">
                             <input

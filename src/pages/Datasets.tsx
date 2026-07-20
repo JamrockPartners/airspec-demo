@@ -239,13 +239,26 @@ export default function Datasets() {
               <div className="divide-y divide-slate-100">
                 {displayFields.map((f, idx) => (
                   <div key={f.name} className="flex items-center gap-4 px-4 py-3">
-                    <div className="w-48 shrink-0">
-                      <span className="font-mono text-sm text-slate-800">{f.name}</span>
-                    </div>
-                    <div className="w-20 shrink-0">
-                      <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded font-medium">
-                        {f.type}
-                      </span>
+                    <div className="w-52 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm text-slate-800">{f.name}</span>
+                        <span className="text-[10px] text-slate-400">{f.type}</span>
+                      </div>
+                      {editingFields ? (
+                        <input
+                          type="text"
+                          value={editingFields[idx]?.key || ''}
+                          onChange={(e) => {
+                            const val = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+                            const updated = [...editingFields];
+                            updated[idx] = { ...updated[idx], key: val };
+                            setEditingFields(updated);
+                          }}
+                          className="mt-1 w-full px-2 py-1 text-xs font-mono border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      ) : (
+                        <span className="block mt-0.5 text-xs font-mono text-slate-400">{f.key || '—'}</span>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       {editingFields ? (
@@ -305,10 +318,10 @@ export default function Datasets() {
                         <tr className="border-b border-slate-200">
                           {previewSource.fields_json.map((f) => (
                             <th
-                              key={f.name}
+                              key={f.key || f.name}
                               className="text-left px-4 py-2.5 font-semibold text-slate-700 text-xs uppercase tracking-wider whitespace-nowrap"
                             >
-                              {f.name}
+                              {f.key || f.name}
                             </th>
                           ))}
                         </tr>
@@ -318,13 +331,13 @@ export default function Datasets() {
                           <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
                             {previewSource.fields_json.map((f) => (
                               <td
-                                key={f.name}
+                                key={f.key || f.name}
                                 className="px-4 py-2 text-slate-700 whitespace-nowrap text-xs"
                               >
-                                {row[f.name] == null ? (
+                                {row[f.key || f.name] == null ? (
                                   <span className="text-slate-300">null</span>
                                 ) : (
-                                  String(row[f.name])
+                                  String(row[f.key || f.name])
                                 )}
                               </td>
                             ))}

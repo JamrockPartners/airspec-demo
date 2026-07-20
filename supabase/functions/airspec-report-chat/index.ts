@@ -65,11 +65,11 @@ Deno.serve(async (req: Request) => {
       .eq("enabled", true);
 
     const sourceContext = (dataSources ?? [])
-      .map((ds: { name: string; description: string | null; fields_json: { name: string; type: string; description?: string }[] }) => {
+      .map((ds: { name: string; description: string | null; fields_json: { name: string; key?: string; type: string; description?: string }[] }) => {
         const fieldList = ds.fields_json
-          .map((f: { name: string; type: string; description?: string }) => {
+          .map((f: { name: string; key?: string; type: string; description?: string }) => {
             const desc = f.description ? ` — ${f.description}` : "";
-            return `    "${f.name}" (${f.type})${desc}`;
+            return `    "${f.key || f.name}" (${f.type})${desc}`;
           })
           .join("\n");
         return `Source: "${ds.name}"${ds.description ? ` — ${ds.description}` : ""}\n  FIELDS (EXHAUSTIVE — no other fields exist):\n${fieldList}\n  [END OF FIELDS]`;

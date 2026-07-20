@@ -1,5 +1,6 @@
 export interface DataSourceField {
   name: string;
+  key: string;
   type: 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array';
   description?: string;
 }

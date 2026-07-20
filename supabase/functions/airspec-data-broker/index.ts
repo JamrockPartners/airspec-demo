@@ -207,15 +207,29 @@ async function fetchSourceRows(
   // Source references in AIRspec 1.1 are spec-compliant slugs, not UUIDs.
   const { data: sourceRow, error: sourceErr } = await supabase
     .from("airspec_data_sources")
-    .select("id, source_type, api_url, api_format, api_root_path")
+    .select("id, source_type, api_url, api_format, api_root_path, fields_json")
     .eq("slug", sourceRef)
     .maybeSingle();
 
   if (sourceErr || !sourceRow) throw new Error(`Data source "${sourceRef}" not found`);
 
+  const fieldsJson = (sourceRow.fields_json ?? []) as { name: string; key?: string; type: string }[];
+
   // Dynamic API sources fetch live at render time; rows are never persisted.
   if (sourceRow.source_type === "api") {
-    return fetchLiveApiRows(sourceRow.api_url, sourceRow.api_format, sourceRow.api_root_path);
+    const rawRows = await fetchLiveApiRows(sourceRow.api_url, sourceRow.api_format, sourceRow.api_root_path);
+    // Remap original column names to keys
+    if (fieldsJson.length > 0 && fieldsJson.some((f) => f.key && f.key !== f.name)) {
+      return rawRows.map((row) => {
+        const mapped: Record<string, unknown> = {};
+        for (const f of fieldsJson) {
+          const k = f.key || f.name;
+          if (f.name in row) mapped[k] = row[f.name];
+        }
+        return mapped;
+      });
+    }
+    return rawRows;
   }
 
   const { data: rawRows, error: rowsErr } = await supabase

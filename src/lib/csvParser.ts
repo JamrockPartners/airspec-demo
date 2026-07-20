@@ -1,5 +1,13 @@
 import type { DataSourceField } from '../types/airspec';
 
+export function slugifyFieldName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_+$/g, '')
+    .replace(/_+/g, '_') || 'field';
+}
+
 export function parseCsvText(text: string): {
   fields: DataSourceField[];
   rows: Record<string, unknown>[];
@@ -84,7 +92,7 @@ function inferFieldTypes(
       }
     }
 
-    return { name, type };
+    return { name, key: slugifyFieldName(name), type };
   });
 }
 

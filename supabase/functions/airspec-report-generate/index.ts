@@ -288,7 +288,7 @@ Deno.serve(async (req: Request) => {
             const fieldDefs = ds.fields_json
               .map((f) => {
                 const desc = f.description ? ` — ${f.description}` : "";
-                return `      "${f.name}" (${f.type})${desc}`;
+                return `      "${f.key || f.name}" (${f.type})${desc}`;
               })
               .join("\n");
             return `  SOURCE id: "${ds.slug}" (name: "${ds.name}"${ds.description ? `, ${ds.description}` : ""})

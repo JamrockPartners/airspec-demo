@@ -102,7 +102,8 @@ export async function deleteDataSource(id: string): Promise<void> {
 
 export async function uploadDatasetRows(
   dataSourceId: string,
-  rows: Record<string, unknown>[]
+  rows: Record<string, unknown>[],
+  fieldMapping?: { name: string; key: string }[]
 ): Promise<void> {
   // Delete existing rows for this source first
   const { error: deleteError } = await supabase
@@ -112,10 +113,21 @@ export async function uploadDatasetRows(
 
   if (deleteError) throw new Error(deleteError.message);
 
+  // Remap row properties from original column names to keys
+  const mappedRows = fieldMapping
+    ? rows.map((row) => {
+        const mapped: Record<string, unknown> = {};
+        for (const { name, key } of fieldMapping) {
+          if (name in row) mapped[key] = row[name];
+        }
+        return mapped;
+      })
+    : rows;
+
   // Insert in batches of 500
   const batchSize = 500;
-  for (let i = 0; i < rows.length; i += batchSize) {
-    const batch = rows.slice(i, i + batchSize).map((row) => ({
+  for (let i = 0; i < mappedRows.length; i += batchSize) {
+    const batch = mappedRows.slice(i, i + batchSize).map((row) => ({
       data_source_id: dataSourceId,
       row_data: row,
     }));
@@ -130,7 +142,7 @@ export async function uploadDatasetRows(
   // Update row count on the source
   await supabase
     .from('airspec_data_sources')
-    .update({ row_count: rows.length, updated_at: new Date().toISOString() })
+    .update({ row_count: mappedRows.length, updated_at: new Date().toISOString() })
     .eq('id', dataSourceId);
 }
 

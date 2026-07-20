@@ -209,7 +209,15 @@ function splitCsvLine(line: string): string[] {
 
 type FieldType = "string" | "number" | "boolean" | "object" | "array";
 
-interface FieldDef { name: string; type: FieldType }
+interface FieldDef { name: string; key: string; type: FieldType }
+
+function slugifyFieldName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_+$/g, '')
+    .replace(/_+/g, '_') || 'field';
+}
 
 function inferFields(rows: Record<string, unknown>[]): FieldDef[] {
   if (rows.length === 0) return [];
@@ -238,6 +246,6 @@ function inferFields(rows: Record<string, unknown>[]): FieldDef[] {
       else if (numeric / nonEmpty > 0.9) type = "number";
       else if (boolean / nonEmpty > 0.9) type = "boolean";
     }
-    return { name, type };
+    return { name, key: slugifyFieldName(name), type };
   });
 }
