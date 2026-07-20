@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, FileBarChart, Database, Loader2, Sparkles, ArrowRight, Clock } from 'lucide-react';
 import { reportService, dataSourceService } from '../services';
@@ -51,13 +51,17 @@ function BentoCard({
 }) {
   const size = getBentoSize(index);
   const age = formatRelativeTime(report.updated_at);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [previewHeight, setPreviewHeight] = useState<number | null>(null);
+
+  const sizeClasses = {
+    large: 'col-span-2 row-span-2',
+    medium: 'col-span-2 row-span-2 md:col-span-1',
+    small: 'col-span-1 row-span-1',
+  };
 
   const scaleFactors = {
-    large: 0.38,
-    medium: 0.28,
-    small: 0.24,
+    large: 0.35,
+    medium: 0.25,
+    small: 0.22,
   };
 
   const innerWidths = {
@@ -66,48 +70,20 @@ function BentoCard({
     small: 800,
   };
 
-  const scale = scaleFactors[size];
-  const innerWidth = innerWidths[size];
-
-  const measureContent = useCallback(() => {
-    if (!contentRef.current) return;
-    const scrollH = contentRef.current.scrollHeight;
-    const maxHeight = size === 'large' ? 900 : size === 'medium' ? 700 : 500;
-    const clampedH = Math.min(scrollH, maxHeight);
-    setPreviewHeight(clampedH * scale);
-  }, [scale, size]);
-
-  useEffect(() => {
-    if (!contentRef.current) return;
-    const observer = new ResizeObserver(measureContent);
-    observer.observe(contentRef.current);
-    measureContent();
-    return () => observer.disconnect();
-  }, [measureContent, spec]);
-
-  const sizeClasses = {
-    large: 'col-span-2 row-span-2',
-    medium: 'col-span-2 row-span-2 md:col-span-1',
-    small: 'col-span-1 row-span-1',
-  };
-
   return (
     <button
       onClick={onClick}
       className={`group relative flex flex-col rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-lg shadow-sm transition-all duration-200 text-left overflow-hidden ${sizeClasses[size]}`}
     >
       {/* Chart preview area */}
-      <div
-        className="relative overflow-hidden rounded-t-2xl bg-slate-50/50"
-        style={{ height: previewHeight ? `${previewHeight + 8}px` : undefined, minHeight: size === 'small' ? '80px' : '120px' }}
-      >
+      <div className="flex-1 relative overflow-hidden rounded-t-2xl bg-slate-50/50">
         {spec && spec.layout ? (
           <div
-            ref={contentRef}
-            className="absolute top-0 left-0 origin-top-left pointer-events-none select-none"
+            className="absolute inset-0 origin-top-left pointer-events-none select-none"
             style={{
-              transform: `scale(${scale})`,
-              width: `${innerWidth}px`,
+              transform: `scale(${scaleFactors[size]})`,
+              width: `${innerWidths[size]}px`,
+              height: `${100 / scaleFactors[size]}%`,
             }}
           >
             <div className="p-4">
@@ -123,11 +99,11 @@ function BentoCard({
         )}
 
         {/* Fade overlay at bottom of preview */}
-        <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent" />
       </div>
 
       {/* Info footer */}
-      <div className="relative z-10 px-4 py-3 border-t border-slate-100 bg-white rounded-b-2xl mt-auto">
+      <div className="relative z-10 px-4 py-3 border-t border-slate-100 bg-white rounded-b-2xl">
         <div className="flex items-center justify-between gap-2">
           <h3 className={`font-semibold text-slate-900 leading-tight truncate ${size === 'large' ? 'text-sm' : 'text-xs'}`}>
             {report.name}
@@ -293,7 +269,7 @@ export default function Dashboard() {
                   </button>
                 )}
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 auto-rows-[minmax(140px,auto)]">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 auto-rows-[160px]">
                 {reports.map((report, i) => {
                   const version = report.current_version_id
                     ? versions[report.current_version_id]
