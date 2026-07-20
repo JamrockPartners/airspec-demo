@@ -16,6 +16,7 @@ function AppLayout() {
           <Route path="/reports/:reportId" element={<ReportViewer />} />
           <Route path="/datasets" element={<Datasets />} />
           <Route path="/datasets/:datasetId" element={<Datasets />} />
+          <Route path="/datasets/:datasetId/:tab" element={<Datasets />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

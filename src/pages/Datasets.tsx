@@ -14,8 +14,9 @@ interface ApiPreviewState {
 }
 
 export default function Datasets() {
-  const { datasetId } = useParams<{ datasetId: string }>();
+  const { datasetId, tab } = useParams<{ datasetId: string; tab?: string }>();
   const navigate = useNavigate();
+  const activeTab = tab === 'data' ? 'data' : 'schema';
   const [sources, setSources] = useState<DataSource[]>([]);
   const [loading, setLoading] = useState(true);
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -174,133 +175,167 @@ export default function Datasets() {
           </div>
         </div>
 
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-slate-700">Schema & Field Descriptions</h3>
-            <div className="flex items-center gap-2">
-              {editingFields ? (
-                <>
-                  <button
-                    onClick={() => setEditingFields(null)}
-                    className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSaveFields}
-                    disabled={savingFields}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                  >
-                    {savingFields ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
-                    Save Descriptions
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setEditingFields([...previewSource.fields_json.map(f => ({ ...f }))])}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-                >
-                  <Pencil size={12} />
-                  Edit Descriptions
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-            <div className="divide-y divide-slate-100">
-              {displayFields.map((f, idx) => (
-                <div key={f.name} className="flex items-center gap-4 px-4 py-3">
-                  <div className="w-48 shrink-0">
-                    <span className="font-mono text-sm text-slate-800">{f.name}</span>
-                  </div>
-                  <div className="w-20 shrink-0">
-                    <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded font-medium">
-                      {f.type}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    {editingFields ? (
-                      <input
-                        type="text"
-                        value={editingFields[idx]?.description || ''}
-                        onChange={(e) => {
-                          const updated = [...editingFields];
-                          updated[idx] = { ...updated[idx], description: e.target.value || undefined };
-                          setEditingFields(updated);
-                        }}
-                        placeholder="Add a description for this field..."
-                        className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                      />
-                    ) : (
-                      <span className={`text-sm ${f.description ? 'text-slate-600' : 'text-slate-300 italic'}`}>
-                        {f.description || 'No description'}
-                      </span>
-                    )}
-                  </div>
-                  {!editingFields && f.description && (
-                    <Check size={14} className="text-emerald-500 shrink-0" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* Tabs */}
+        <div className="border-b border-slate-200 mb-6">
+          <nav className="flex gap-6">
+            <button
+              onClick={() => navigate(`/datasets/${previewSource.slug || previewSource.id}/schema`)}
+              className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'schema'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              Schema
+            </button>
+            <button
+              onClick={() => navigate(`/datasets/${previewSource.slug || previewSource.id}/data`)}
+              className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'data'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              Data
+            </button>
+          </nav>
         </div>
 
-        {previewLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 size={24} className="animate-spin text-slate-400" />
-          </div>
-        ) : (
-          <>
-            {previewSource.source_type === 'api' && apiPreview && (
-              <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700 flex items-center gap-2">
-                <Link2 size={14} />
-                Fetched live from <span className="font-mono truncate max-w-[400px]">{previewSource.api_url}</span>
-                {apiPreview.truncated && ' · capped at 10,000 rows'}
-              </div>
-            )}
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-              <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50">
-                <p className="text-xs text-slate-500">
-                  Showing {previewSource.source_type === 'api' && apiPreview ? apiPreview.rows.length : previewRows.length} of{' '}
-                  {previewSource.source_type === 'api' && apiPreview ? apiPreview.totalRows : previewSource.row_count} rows
-                </p>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200">
-                      {previewSource.fields_json.map((f) => (
-                        <th
-                          key={f.name}
-                          className="text-left px-4 py-2.5 font-semibold text-slate-700 text-xs uppercase tracking-wider whitespace-nowrap"
-                        >
-                          {f.name}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {(previewSource.source_type === 'api' && apiPreview ? apiPreview.rows : previewRows).map((row, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
-                        {previewSource.fields_json.map((f) => (
-                          <td
-                            key={f.name}
-                            className="px-4 py-2 text-slate-700 whitespace-nowrap text-xs"
-                          >
-                            {row[f.name] == null ? (
-                              <span className="text-slate-300">null</span>
-                            ) : (
-                              String(row[f.name])
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+        {/* Schema Tab */}
+        {activeTab === 'schema' && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-700">Field Descriptions</h3>
+              <div className="flex items-center gap-2">
+                {editingFields ? (
+                  <>
+                    <button
+                      onClick={() => setEditingFields(null)}
+                      className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveFields}
+                      disabled={savingFields}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                    >
+                      {savingFields ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                      Save
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setEditingFields([...previewSource.fields_json.map(f => ({ ...f }))])}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                  >
+                    <Pencil size={12} />
+                    Edit Descriptions
+                  </button>
+                )}
               </div>
             </div>
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+              <div className="divide-y divide-slate-100">
+                {displayFields.map((f, idx) => (
+                  <div key={f.name} className="flex items-center gap-4 px-4 py-3">
+                    <div className="w-48 shrink-0">
+                      <span className="font-mono text-sm text-slate-800">{f.name}</span>
+                    </div>
+                    <div className="w-20 shrink-0">
+                      <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded font-medium">
+                        {f.type}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      {editingFields ? (
+                        <input
+                          type="text"
+                          value={editingFields[idx]?.description || ''}
+                          onChange={(e) => {
+                            const updated = [...editingFields];
+                            updated[idx] = { ...updated[idx], description: e.target.value || undefined };
+                            setEditingFields(updated);
+                          }}
+                          placeholder="Add a description for this field..."
+                          className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                        />
+                      ) : (
+                        <span className={`text-sm ${f.description ? 'text-slate-600' : 'text-slate-300 italic'}`}>
+                          {f.description || 'No description'}
+                        </span>
+                      )}
+                    </div>
+                    {!editingFields && f.description && (
+                      <Check size={14} className="text-emerald-500 shrink-0" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Data Tab */}
+        {activeTab === 'data' && (
+          <>
+            {previewLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 size={24} className="animate-spin text-slate-400" />
+              </div>
+            ) : (
+              <>
+                {previewSource.source_type === 'api' && apiPreview && (
+                  <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700 flex items-center gap-2">
+                    <Link2 size={14} />
+                    Fetched live from <span className="font-mono truncate max-w-[400px]">{previewSource.api_url}</span>
+                    {apiPreview.truncated && ' · capped at 10,000 rows'}
+                  </div>
+                )}
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                  <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50">
+                    <p className="text-xs text-slate-500">
+                      Showing {previewSource.source_type === 'api' && apiPreview ? apiPreview.rows.length : previewRows.length} of{' '}
+                      {previewSource.source_type === 'api' && apiPreview ? apiPreview.totalRows : previewSource.row_count} rows
+                    </p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-200">
+                          {previewSource.fields_json.map((f) => (
+                            <th
+                              key={f.name}
+                              className="text-left px-4 py-2.5 font-semibold text-slate-700 text-xs uppercase tracking-wider whitespace-nowrap"
+                            >
+                              {f.name}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {(previewSource.source_type === 'api' && apiPreview ? apiPreview.rows : previewRows).map((row, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                            {previewSource.fields_json.map((f) => (
+                              <td
+                                key={f.name}
+                                className="px-4 py-2 text-slate-700 whitespace-nowrap text-xs"
+                              >
+                                {row[f.name] == null ? (
+                                  <span className="text-slate-300">null</span>
+                                ) : (
+                                  String(row[f.name])
+                                )}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
           </>
         )}
       </div>
@@ -349,7 +384,7 @@ export default function Datasets() {
           {sources.map((source) => (
             <div
               key={source.id}
-              onClick={() => { navigate(`/datasets/${source.slug || source.id}`); handlePreview(source); }}
+              onClick={() => { navigate(`/datasets/${source.slug || source.id}/schema`); handlePreview(source); }}
               className={`flex items-center gap-4 p-4 bg-white rounded-xl border transition-all cursor-pointer hover:border-slate-300 hover:shadow-md ${
                 source.enabled
                   ? 'border-slate-200 shadow-sm'
@@ -390,7 +425,7 @@ export default function Datasets() {
 
               <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                 <button
-                  onClick={(e) => { e.stopPropagation(); navigate(`/datasets/${source.slug || source.id}`); handlePreview(source); setEditingFields([...source.fields_json.map(f => ({ ...f }))]); }}
+                  onClick={(e) => { e.stopPropagation(); navigate(`/datasets/${source.slug || source.id}/schema`); handlePreview(source); setEditingFields([...source.fields_json.map(f => ({ ...f }))]); }}
                   className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
                   title="Edit schema descriptions"
                 >
