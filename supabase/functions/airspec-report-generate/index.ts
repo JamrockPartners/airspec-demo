@@ -48,7 +48,7 @@ DATASET (required: id, source, operation):
     Derived aliases MAY reference catalog fields or aliases earlier in the same derived array. Forward refs and cycles MUST be rejected.
   fields: string[]                             // list operation
   field: string                                // distinct operation
-  dimensions: [{ field, timeUnit?:"day|week|month|quarter|year", alias? }]  // aggregate
+  dimensions: [{ field, timeUnit?:"day|week|month|quarter|year", alias? }]  // aggregate; ALWAYS include alias (e.g. {field:"age",alias:"age"}) for deterministic output keys
   metrics: [{ operation, field?, alias (REQUIRED) }] | [{ calc, alias (REQUIRED), label? }]
     Standard metric: { operation, field?, alias }  // field REQUIRED unless operation=="count"
     Calc-form metric: { calc: derivedExpr, alias } // post-aggregation calc; mutually exclusive with operation/field

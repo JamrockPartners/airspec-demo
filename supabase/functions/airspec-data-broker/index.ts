@@ -564,7 +564,7 @@ function executeAggregate(rows: Record<string, unknown>[], def: ResolvedDataset)
   if (dimensions.length === 0) {
     const result: Record<string, unknown> = {};
     for (const m of standardMetrics) {
-      const alias = m.alias ?? defaultMetricAlias(m);
+      const alias = m.alias || defaultMetricAlias(m);
       result[alias] = computeMetric(rows, m);
     }
     // Calc-form metrics: evaluated post-aggregation referencing sibling aliases.
@@ -581,7 +581,7 @@ function executeAggregate(rows: Record<string, unknown>[], def: ResolvedDataset)
 
   const groups = new Map<string, Record<string, unknown>[]>();
   for (const row of preparedRows) {
-    const key = dimensions.map((d) => String(row[d.alias ?? d.field] ?? "")).join("|||");
+    const key = dimensions.map((d) => String(row[d.alias || d.field] ?? "")).join("|||");
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(row);
   }
@@ -590,11 +590,11 @@ function executeAggregate(rows: Record<string, unknown>[], def: ResolvedDataset)
   for (const [, groupRows] of groups) {
     const result: Record<string, unknown> = {};
     for (const d of dimensions) {
-      const alias = d.alias ?? d.field;
+      const alias = d.alias || d.field;
       result[alias] = groupRows[0][alias];
     }
     for (const m of standardMetrics) {
-      const alias = m.alias ?? defaultMetricAlias(m);
+      const alias = m.alias || defaultMetricAlias(m);
       result[alias] = computeMetric(groupRows, m);
     }
     // Calc-form metrics: evaluated post-aggregation referencing sibling aliases.
@@ -615,7 +615,7 @@ function executeAggregate(rows: Record<string, unknown>[], def: ResolvedDataset)
 function applyDimensions(row: Record<string, unknown>, dimensions: Dimension[]): Record<string, unknown> {
   const out = { ...row };
   for (const d of dimensions) {
-    const alias = d.alias ?? d.field;
+    const alias = d.alias || d.field;
     if (!d.timeUnit) {
       if (alias !== d.field) out[alias] = row[d.field];
       continue;
