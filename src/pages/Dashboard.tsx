@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileBarChart, Database, Loader2, Sparkles, ArrowRight, Clock } from 'lucide-react';
+import { Plus, FileBarChart, Database, Loader2, Sparkles, ArrowRight, Clock, LayoutGrid, Rows3 } from 'lucide-react';
 import { reportService, dataSourceService } from '../services';
 import type { Report, DataSource, ReportVersion, AirspecDocument } from '../types/airspec';
 import { useReportChat } from '../hooks/useReportChat';
@@ -9,6 +9,7 @@ import { ReportProvider } from '../components/features/reports/renderer/ReportCo
 import LayoutWalker from '../components/features/reports/renderer/LayoutWalker';
 
 type BentoSize = 'large' | 'medium' | 'small';
+type CardLayout = 'bento' | 'wide';
 
 const BENTO_PATTERN: BentoSize[] = [
   'large', 'medium', 'medium',
@@ -125,6 +126,72 @@ function BentoCard({
   );
 }
 
+function WideCard({
+  report,
+  spec,
+  versionId,
+  onClick,
+}: {
+  report: Report;
+  spec: AirspecDocument | null;
+  versionId: string | null;
+  onClick: () => void;
+}) {
+  const age = formatRelativeTime(report.updated_at);
+
+  return (
+    <button
+      onClick={onClick}
+      className="group relative flex flex-row h-[120px] rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-lg shadow-sm transition-all duration-200 text-left overflow-hidden"
+    >
+      {/* Chart preview area */}
+      <div className="w-[200px] flex-shrink-0 relative overflow-hidden rounded-l-2xl bg-slate-50/50 border-r border-slate-100">
+        {spec && spec.layout ? (
+          <div
+            className="absolute inset-0 origin-top-left pointer-events-none select-none"
+            style={{
+              transform: 'scale(0.18)',
+              width: '900px',
+              height: '556%',
+            }}
+          >
+            <div className="p-4">
+              <ReportProvider document={spec} versionId={versionId}>
+                <LayoutWalker node={spec.layout} />
+              </ReportProvider>
+            </div>
+          </div>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <FileBarChart size={24} className="text-slate-200" />
+          </div>
+        )}
+        <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-white to-transparent" />
+      </div>
+
+      {/* Info section */}
+      <div className="flex-1 flex flex-col justify-center px-5 py-3 min-w-0">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold text-slate-900 leading-tight truncate">
+            {report.name}
+          </h3>
+          <ArrowRight size={14} className="text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+        </div>
+        <div className="flex items-center gap-2 mt-2">
+          <Clock size={11} className="text-slate-400" />
+          <span className="text-xs text-slate-400 font-medium">{age}</span>
+          {report.model && (
+            <>
+              <span className="text-slate-300">·</span>
+              <span className="text-xs text-slate-400 font-medium truncate">{report.model}</span>
+            </>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [reports, setReports] = useState<Report[]>([]);
@@ -132,6 +199,14 @@ export default function Dashboard() {
   const [versions, setVersions] = useState<Record<string, ReportVersion>>({});
   const [loading, setLoading] = useState(true);
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [cardLayout, setCardLayout] = useState<CardLayout>(() => {
+    return (localStorage.getItem('airspec-card-layout') as CardLayout) || 'bento';
+  });
+
+  const toggleLayout = (layout: CardLayout) => {
+    setCardLayout(layout);
+    localStorage.setItem('airspec-card-layout', layout);
+  };
 
   const chat = useReportChat();
 
@@ -259,34 +334,72 @@ export default function Dashboard() {
             <div className="mt-10">
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-lg font-semibold text-slate-900">Reports</h2>
-                {reports.length > 11 && (
-                  <button
-                    onClick={() => navigate('/reports')}
-                    className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
-                  >
-                    View all
-                    <ArrowRight size={14} />
-                  </button>
-                )}
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center bg-slate-100 rounded-lg p-0.5">
+                    <button
+                      onClick={() => toggleLayout('bento')}
+                      className={`p-1.5 rounded-md transition-all ${cardLayout === 'bento' ? 'bg-white shadow-sm text-slate-700' : 'text-slate-400 hover:text-slate-500'}`}
+                      title="Grid view"
+                    >
+                      <LayoutGrid size={14} />
+                    </button>
+                    <button
+                      onClick={() => toggleLayout('wide')}
+                      className={`p-1.5 rounded-md transition-all ${cardLayout === 'wide' ? 'bg-white shadow-sm text-slate-700' : 'text-slate-400 hover:text-slate-500'}`}
+                      title="List view"
+                    >
+                      <Rows3 size={14} />
+                    </button>
+                  </div>
+                  {reports.length > 11 && (
+                    <button
+                      onClick={() => navigate('/reports')}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                    >
+                      View all
+                      <ArrowRight size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 auto-rows-[160px]">
-                {reports.map((report, i) => {
-                  const version = report.current_version_id
-                    ? versions[report.current_version_id]
-                    : null;
-                  const spec = (version?.report_spec_json as AirspecDocument) ?? null;
-                  return (
-                    <BentoCard
-                      key={report.id}
-                      report={report}
-                      index={i}
-                      spec={spec}
-                      versionId={version?.id ?? null}
-                      onClick={() => navigate(`/reports/${report.id}`)}
-                    />
-                  );
-                })}
-              </div>
+              {cardLayout === 'bento' ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 auto-rows-[160px]">
+                  {reports.map((report, i) => {
+                    const version = report.current_version_id
+                      ? versions[report.current_version_id]
+                      : null;
+                    const spec = (version?.report_spec_json as AirspecDocument) ?? null;
+                    return (
+                      <BentoCard
+                        key={report.id}
+                        report={report}
+                        index={i}
+                        spec={spec}
+                        versionId={version?.id ?? null}
+                        onClick={() => navigate(`/reports/${report.id}`)}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {reports.map((report) => {
+                    const version = report.current_version_id
+                      ? versions[report.current_version_id]
+                      : null;
+                    const spec = (version?.report_spec_json as AirspecDocument) ?? null;
+                    return (
+                      <WideCard
+                        key={report.id}
+                        report={report}
+                        spec={spec}
+                        versionId={version?.id ?? null}
+                        onClick={() => navigate(`/reports/${report.id}`)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </>
