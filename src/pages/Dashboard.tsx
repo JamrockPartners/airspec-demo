@@ -144,14 +144,14 @@ function WideCard({
       className="group relative flex flex-col col-span-2 row-span-1 h-full rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-lg shadow-sm transition-all duration-200 text-left overflow-hidden"
     >
       {/* Chart preview area - full width */}
-      <div className="relative overflow-hidden rounded-t-2xl bg-slate-50/50" style={{ height: '128px' }}>
+      <div className="flex-1 relative overflow-hidden rounded-t-2xl bg-slate-50/50">
         {spec && spec.layout ? (
           <div
             className="absolute inset-0 origin-top-left pointer-events-none select-none"
             style={{
               transform: 'scale(0.16)',
               width: '625%',
-              height: '800px',
+              height: `${100 / 0.16}%`,
             }}
           >
             <div className="p-4">
