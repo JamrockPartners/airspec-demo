@@ -27,9 +27,9 @@
           "type": "nominal"
         },
         "tooltip": [
-          { "field": "date", "type": "temporal", "label": "Week" },
-          { "field": "series", "type": "nominal", "label": "Series" },
-          { "field": "value", "type": "quantitative", "label": "Users" }
+          { "field": "date", "type": "temporal", "title": "Week" },
+          { "field": "series", "type": "nominal", "title": "Series" },
+          { "field": "value", "type": "quantitative", "title": "Users" }
         ]
       }
     },

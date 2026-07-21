@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useMemo, Component, type ReactNode } from 'react';
+import { useCallback, useRef, useMemo, Component, type ReactNode } from 'react';
 import { AirmarkChartAuto } from '@airspec/airmark-react';
 import type { AirspecGraphic, AirspecSelection } from '../../../../../types/airspec';
 
@@ -8,11 +8,6 @@ interface RenderGraphicProps {
   selectionStates: Record<string, unknown>;
   onSelectionChange: (selectionId: string, type: 'point' | 'interval', fields: string[], value: unknown, row: Record<string, unknown>) => void;
   transitionMs?: number;
-}
-
-interface TooltipContent {
-  visible: boolean;
-  lines: { label: string; value: string }[];
 }
 
 function parseTooltipText(text: string): { label: string; value: string }[] {
@@ -37,7 +32,6 @@ export function RenderGraphic({ graphic, data, selectionStates, onSelectionChang
   const wrapperRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const activeTitleRef = useRef<{ el: Element; original: string } | null>(null);
-  const [tooltip, setTooltip] = useState<TooltipContent>({ visible: false, lines: [] });
 
   const handleSelect = useCallback((payload: { selection: string; datum: Record<string, unknown>; fields?: string[] }) => {
     const fields = payload.fields ?? [];
@@ -47,7 +41,7 @@ export function RenderGraphic({ graphic, data, selectionStates, onSelectionChang
     onSelectionChange(payload.selection, 'point', fields, value, payload.datum);
   }, [onSelectionChange]);
 
-  const positionTooltip = useCallback((clientX: number, clientY: number) => {
+  const applyPosition = useCallback((clientX: number, clientY: number) => {
     const el = tooltipRef.current;
     const wrapper = wrapperRef.current;
     if (!el || !wrapper) return;
@@ -66,8 +60,33 @@ export function RenderGraphic({ graphic, data, selectionStates, onSelectionChang
     if (top + panelH > containerH - 8) top = containerH - panelH - 8;
     if (top < 8) top = 8;
 
-    el.style.left = `${left}px`;
-    el.style.top = `${top}px`;
+    el.style.transform = `translate(${left}px, ${top}px)`;
+  }, []);
+
+  const showTooltip = useCallback((lines: { label: string; value: string }[], clientX: number, clientY: number) => {
+    const el = tooltipRef.current;
+    if (!el) return;
+    linesRef.current = lines;
+    // Rebuild inner HTML directly — no React re-render, no flash at 0,0
+    el.innerHTML = lines
+      .map(
+        (r) =>
+          `<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;min-height:22px">` +
+          `<span style="color:#94a3b8;white-space:nowrap">${r.label}</span>` +
+          `<span style="font-weight:500;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.value}</span>` +
+          `</div>`,
+      )
+      .join('');
+    el.style.visibility = 'hidden';
+    el.style.display = 'block';
+    // Read height after display:block so offsetHeight is accurate, then position
+    applyPosition(clientX, clientY);
+    el.style.visibility = 'visible';
+  }, [applyPosition]);
+
+  const hideTooltip = useCallback(() => {
+    const el = tooltipRef.current;
+    if (el) el.style.display = 'none';
   }, []);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -85,19 +104,20 @@ export function RenderGraphic({ graphic, data, selectionStates, onSelectionChang
         titleEl.textContent = '';
         const lines = parseTooltipText(original);
         if (lines.length > 0) {
-          setTooltip({ visible: true, lines });
+          showTooltip(lines, e.clientX, e.clientY);
         }
+      } else {
+        applyPosition(e.clientX, e.clientY);
       }
-      positionTooltip(e.clientX, e.clientY);
     } else {
       if (activeTitleRef.current) {
         const prevTitle = activeTitleRef.current.el.querySelector('title');
         if (prevTitle) prevTitle.textContent = activeTitleRef.current.original;
         activeTitleRef.current = null;
       }
-      setTooltip((prev) => (prev.visible ? { visible: false, lines: prev.lines } : prev));
+      hideTooltip();
     }
-  }, [positionTooltip]);
+  }, [showTooltip, applyPosition, hideTooltip]);
 
   const handleMouseLeave = useCallback(() => {
     if (activeTitleRef.current) {
@@ -105,8 +125,8 @@ export function RenderGraphic({ graphic, data, selectionStates, onSelectionChang
       if (prevTitle) prevTitle.textContent = activeTitleRef.current.original;
       activeTitleRef.current = null;
     }
-    setTooltip((prev) => (prev.visible ? { visible: false, lines: prev.lines } : prev));
-  }, []);
+    hideTooltip();
+  }, [hideTooltip]);
 
   return (
     <AirmarkErrorBoundary>
@@ -126,27 +146,21 @@ export function RenderGraphic({ graphic, data, selectionStates, onSelectionChang
           minHeight={200}
           transitionMs={transitionMs}
         />
-        {tooltip.visible && tooltip.lines.length > 0 && (
-          <div
-            ref={tooltipRef}
-            style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              width: TOOLTIP_W,
-              pointerEvents: 'none',
-              zIndex: 50,
-            }}
-            className="bg-slate-800 text-white rounded-lg shadow-xl px-3 py-2 text-xs"
-          >
-            {tooltip.lines.map((row, i) => (
-              <div key={i} className="flex items-baseline justify-between gap-3" style={{ minHeight: 22 }}>
-                <span className="text-slate-400 shrink-0">{row.label}</span>
-                <span className="font-medium text-right truncate">{row.value}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Tooltip: positioned via direct DOM mutation to avoid React re-render flicker */}
+        <div
+          ref={tooltipRef}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: TOOLTIP_W,
+            pointerEvents: 'none',
+            zIndex: 50,
+            display: 'none',
+            transform: 'translate(0px, 0px)',
+          }}
+          className="bg-slate-800 text-white rounded-lg shadow-xl px-3 py-2 text-xs"
+        />
       </div>
     </AirmarkErrorBoundary>
   );

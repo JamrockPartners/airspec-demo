@@ -18,8 +18,8 @@
           "type": "nominal"
         },
         "tooltip": [
-          { "field": "status", "type": "nominal", "label": "Status" },
-          { "field": "count", "type": "quantitative", "label": "Count" }
+          { "field": "status", "type": "nominal", "title": "Status" },
+          { "field": "count", "type": "quantitative", "title": "Count" }
         ]
       }
     },

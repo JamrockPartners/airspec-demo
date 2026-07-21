@@ -30,8 +30,8 @@
           }
         },
         "tooltip": [
-          { "field": "letter", "type": "nominal", "label": "Letter" },
-          { "field": "frequency", "type": "quantitative", "label": "Frequency", "format": { "type": "number", "maximumFractionDigits": 4 } }
+          { "field": "letter", "type": "nominal", "title": "Letter" },
+          { "field": "frequency", "type": "quantitative", "title": "Frequency", "format": { "type": "number", "maximumFractionDigits": 4 } }
         ]
       }
     },

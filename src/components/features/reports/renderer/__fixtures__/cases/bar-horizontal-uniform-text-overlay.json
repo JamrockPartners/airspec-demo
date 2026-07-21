@@ -29,8 +29,8 @@
               }
             },
             "tooltip": [
-              { "field": "displayName", "type": "nominal", "label": "Department" },
-              { "field": "displayName", "aggregate": "count", "type": "quantitative", "label": "Count" }
+              { "field": "displayName", "type": "nominal", "title": "Department" },
+              { "field": "displayName", "aggregate": "count", "type": "quantitative", "title": "Count" }
             ]
           }
         },

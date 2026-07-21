@@ -17,8 +17,8 @@
           "type": "nominal"
         },
         "tooltip": [
-          { "field": "browser", "type": "nominal", "label": "Browser" },
-          { "field": "share", "type": "quantitative", "label": "Market Share (%)", "format": { "type": "number", "decimals": 1 } }
+          { "field": "browser", "type": "nominal", "title": "Browser" },
+          { "field": "share", "type": "quantitative", "title": "Market Share (%)", "format": { "type": "number", "decimals": 1 } }
         ]
       }
     },
