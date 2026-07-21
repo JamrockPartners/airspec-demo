@@ -49,7 +49,7 @@ function BentoCard({
   versionId: string | null;
   onClick: () => void;
 }) {
-  const size = getBentoSize(index);
+  const size = report.card_layout === 'tall' ? 'large' : getBentoSize(index);
   const age = formatRelativeTime(report.updated_at);
 
   const sizeClasses = {
