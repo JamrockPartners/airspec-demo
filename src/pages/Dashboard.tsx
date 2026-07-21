@@ -149,9 +149,9 @@ function WideCard({
           <div
             className="absolute inset-0 origin-top-left pointer-events-none select-none"
             style={{
-              transform: 'scale(0.16)',
-              width: '625%',
-              height: `${100 / 0.16}%`,
+              transform: 'scale(0.5)',
+              width: '1200px',
+              height: `${100 / 0.5}%`,
             }}
           >
             <div className="p-4">
