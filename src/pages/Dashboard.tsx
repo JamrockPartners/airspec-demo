@@ -141,17 +141,17 @@ function WideCard({
   return (
     <button
       onClick={onClick}
-      className="group relative flex flex-row col-span-2 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-lg shadow-sm transition-all duration-200 text-left overflow-hidden"
+      className="group relative flex flex-col col-span-2 row-span-1 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-lg shadow-sm transition-all duration-200 text-left overflow-hidden"
     >
-      {/* Chart preview area */}
-      <div className="w-[200px] flex-shrink-0 relative overflow-hidden rounded-l-2xl bg-slate-50/50 border-r border-slate-100">
+      {/* Chart preview area - full width */}
+      <div className="flex-1 relative overflow-hidden rounded-t-2xl bg-slate-50/50">
         {spec && spec.layout ? (
           <div
             className="absolute inset-0 origin-top-left pointer-events-none select-none"
             style={{
-              transform: 'scale(0.18)',
-              width: '900px',
-              height: '556%',
+              transform: 'scale(0.16)',
+              width: '1200px',
+              height: '625%',
             }}
           >
             <div className="p-4">
@@ -165,27 +165,23 @@ function WideCard({
             <FileBarChart size={24} className="text-slate-200" />
           </div>
         )}
-        <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-white to-transparent" />
       </div>
 
-      {/* Info section */}
-      <div className="flex-1 flex flex-col justify-center px-5 py-3 min-w-0">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold text-slate-900 leading-tight truncate">
+      {/* Info overlay at bottom */}
+      <div className="px-3 py-2 border-t border-slate-100 flex items-center justify-between gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <h3 className="text-xs font-semibold text-slate-900 leading-tight truncate">
             {report.name}
           </h3>
-          <ArrowRight size={14} className="text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-        </div>
-        <div className="flex items-center gap-2 mt-2">
-          <Clock size={11} className="text-slate-400" />
-          <span className="text-xs text-slate-400 font-medium">{age}</span>
+          <span className="text-[10px] text-slate-400 font-medium flex-shrink-0">{age}</span>
           {report.model && (
             <>
               <span className="text-slate-300">·</span>
-              <span className="text-xs text-slate-400 font-medium truncate">{report.model}</span>
+              <span className="text-[10px] text-slate-400 font-medium truncate">{report.model}</span>
             </>
           )}
         </div>
+        <ArrowRight size={12} className="text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
       </div>
     </button>
   );
