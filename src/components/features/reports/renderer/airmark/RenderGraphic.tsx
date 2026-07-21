@@ -66,7 +66,6 @@ export function RenderGraphic({ graphic, data, selectionStates, onSelectionChang
   const showTooltip = useCallback((lines: { label: string; value: string }[], clientX: number, clientY: number) => {
     const el = tooltipRef.current;
     if (!el) return;
-    linesRef.current = lines;
     // Rebuild inner HTML directly — no React re-render, no flash at 0,0
     el.innerHTML = lines
       .map(
@@ -77,16 +76,13 @@ export function RenderGraphic({ graphic, data, selectionStates, onSelectionChang
           `</div>`,
       )
       .join('');
-    el.style.visibility = 'hidden';
-    el.style.display = 'block';
-    // Read height after display:block so offsetHeight is accurate, then position
     applyPosition(clientX, clientY);
-    el.style.visibility = 'visible';
+    el.style.opacity = '1';
   }, [applyPosition]);
 
   const hideTooltip = useCallback(() => {
     const el = tooltipRef.current;
-    if (el) el.style.display = 'none';
+    if (el) el.style.opacity = '0';
   }, []);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -156,8 +152,9 @@ export function RenderGraphic({ graphic, data, selectionStates, onSelectionChang
             width: TOOLTIP_W,
             pointerEvents: 'none',
             zIndex: 50,
-            display: 'none',
+            opacity: 0,
             transform: 'translate(0px, 0px)',
+            transition: 'opacity 80ms ease-out',
           }}
           className="bg-slate-800 text-white rounded-lg shadow-xl px-3 py-2 text-xs"
         />
