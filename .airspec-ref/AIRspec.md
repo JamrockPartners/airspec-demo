@@ -1164,3 +1164,17 @@ AIRMark's mark/encoding design draws on the grammar-of-graphics tradition, and [
 ---
 
 *AIRspec — declare the report, trust the host.*
+
+---
+
+## Changelog
+
+### airmark-engine 0.4.5
+
+- **Deterministic formatted tooltips.** Tooltip encoding channels (§10.5) now produce deterministic, format-aware tooltip entries. Each `tooltip` channel definition's `format` object (§11) is applied to the bound datum value, producing stable `label: value` pairs regardless of host locale or runtime state.
+- **Native React/SVG `<title>` tooltips.** The React renderer emits native SVG `<title>` elements for each mark with tooltip metadata. Hovering a mark shows a browser-native tooltip with all formatted tooltip fields — no JavaScript tooltip library, no custom positioning, no z-index conflicts. Accessible by default (screen readers announce `title` content).
+- **Optional React `transitionMs`.** `AirmarkChart` and `AirmarkChartAuto` accept an optional `transitionMs` prop (milliseconds, default `0`). When non-zero, marks animate between data states via CSS geometry transitions (rects, circles, opacity/fill morph; axis text crossfades; paths/lines snap). The scene graph remains deterministic and conformance-relevant; only the on-screen interpolation between two exact layouts is smoothed. Requires stable mark identity across states.
+- **Tooltip-enabled donut fixture.** The `arc-donut` conformance fixture now includes `tooltip` encoding channels, and a new `arc-pie-legend-tooltip` fixture demonstrates tooltip + legend interaction. Gallery tag added.
+- **AIRspec generator guidance updated.** Generator documentation recommends declaring `tooltip` channels on all data-bound marks to ensure hover-readable charts. See §10.5 and the example in §18.
+- **31 tests and 17 goldens pass.** Full conformance suite green.
+- **GitHub release:** https://github.com/bzalk/airmark-engine/releases/tag/v0.4.5

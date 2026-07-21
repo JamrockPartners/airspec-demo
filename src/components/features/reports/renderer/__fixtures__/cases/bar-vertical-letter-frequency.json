@@ -28,7 +28,11 @@
               "maximumFractionDigits": 2
             }
           }
-        }
+        },
+        "tooltip": [
+          { "field": "letter", "type": "nominal", "label": "Letter" },
+          { "field": "frequency", "type": "quantitative", "label": "Frequency", "format": { "type": "number", "maximumFractionDigits": 4 } }
+        ]
       }
     },
     "rows": [

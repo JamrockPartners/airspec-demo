@@ -157,12 +157,16 @@ ENCODING CHANNELS (most used): x, y, color, size, opacity, theta, text, tooltip,
   Aggregate on a channel: { field:"total", type:"quantitative", aggregate:"sum", title:"Revenue" }
   Time unit on a channel: { field:"created_at", type:"temporal", timeUnit:"month", title:"Month" }
 
+TOOLTIP RULE: Every data-bound mark (bar, line, point, circle, arc, area) MUST include a "tooltip" encoding channel — an array of field definitions with "label" and optional "format". Tooltips give users hover-readable context for each mark. Example:
+  encoding { x:{...}, y:{...}, tooltip: [{ field:"category", type:"nominal", label:"Category" }, { field:"value", type:"quantitative", label:"Value", format:{type:"number",maximumFractionDigits:0} }] }
+  For temporal fields in tooltips, use format:{type:"date",dateStyle:"medium"}.
+
 COMMON PATTERNS:
-  Bar chart:     mark "bar", encoding { x:{field,type:"nominal"}, y:{field,type:"quantitative",aggregate:"sum"} }
-  Line chart:    mark "line" (object with point:true), encoding { x:{field,type:"temporal" or "nominal"}, y:{field,type:"quantitative"} }
-  Stacked bar:   mark "bar", encoding { x:{field,type:"nominal"}, y:{field,type:"quantitative",aggregate:"sum",stack:"zero"}, color:{field,type:"nominal"} }
-  Donut/arc:     mark "arc" (object with innerRadius), encoding { theta:{field,type:"quantitative"}, color:{field,type:"nominal"} }
-  Scatter:       mark "circle", encoding { x:{field,type:"quantitative"}, y:{field,type:"quantitative"}, color:{field,type:"nominal"}, size:{field,type:"quantitative"} }
+  Bar chart:     mark "bar", encoding { x:{field,type:"nominal"}, y:{field,type:"quantitative",aggregate:"sum"}, tooltip:[{field,type:"nominal",label:"Category"},{field,type:"quantitative",label:"Value"}] }
+  Line chart:    mark "line" (object with point:true), encoding { x:{field,type:"temporal" or "nominal"}, y:{field,type:"quantitative"}, tooltip:[{field,type:"temporal",label:"Date"},{field,type:"quantitative",label:"Value"}] }
+  Stacked bar:   mark "bar", encoding { x:{field,type:"nominal"}, y:{field,type:"quantitative",aggregate:"sum",stack:"zero"}, color:{field,type:"nominal"}, tooltip:[{field,type:"nominal",label:"Category"},{field,type:"nominal",label:"Segment"},{field,type:"quantitative",label:"Value"}] }
+  Donut/arc:     mark "arc" (object with innerRadius), encoding { theta:{field,type:"quantitative"}, color:{field,type:"nominal"}, tooltip:[{field,type:"nominal",label:"Category"},{field,type:"quantitative",label:"Count"}] }
+  Scatter:       mark "circle", encoding { x:{field,type:"quantitative"}, y:{field,type:"quantitative"}, color:{field,type:"nominal"}, size:{field,type:"quantitative"}, tooltip:[{field,type:"nominal",label:"Group"},{field,type:"quantitative",label:"X"},{field,type:"quantitative",label:"Y"}] }
 
 DIVERGING / POPULATION PYRAMID RULE:
   Always generate two adjacent span: 6 charts inside a grid with gap: "none".
@@ -220,13 +224,13 @@ const EXAMPLE_DOC = `EXAMPLE — a valid AIRspec 1.1 reactive document (paramete
     { "id": "salesChart", "type": "chart", "datasetId": "salesBreakdown", "title": "Sales breakdown",
       "graphicBinding": { "parameter": "chartMode", "cases": [
         { "equals": "bar", "value": { "mark": { "type": "bar", "color": "#3264D6", "cornerRadiusEnd": 4 },
-          "encoding": { "x": { "field": "category", "type": "nominal", "title": "Category" }, "y": { "field": "value", "type": "quantitative", "title": "Value" } },
+          "encoding": { "x": { "field": "category", "type": "nominal", "title": "Category" }, "y": { "field": "value", "type": "quantitative", "title": "Value" }, "tooltip": [{ "field": "category", "type": "nominal", "label": "Category" }, { "field": "value", "type": "quantitative", "label": "Value", "format": { "type": "number", "maximumFractionDigits": 0 } }] },
           "selections": [{ "id": "pickedCategory", "type": "point", "on": "click", "fields": ["category"] }] } },
         { "equals": "line", "value": { "mark": { "type": "line", "color": "#3264D6", "point": true },
-          "encoding": { "x": { "field": "category", "type": "nominal", "title": "Category" }, "y": { "field": "value", "type": "quantitative", "title": "Value" } },
+          "encoding": { "x": { "field": "category", "type": "nominal", "title": "Category" }, "y": { "field": "value", "type": "quantitative", "title": "Value" }, "tooltip": [{ "field": "category", "type": "nominal", "label": "Category" }, { "field": "value", "type": "quantitative", "label": "Value", "format": { "type": "number", "maximumFractionDigits": 0 } }] },
           "selections": [{ "id": "pickedCategory", "type": "point", "on": "click", "fields": ["category"] }] } } ],
         "default": { "mark": { "type": "bar", "color": "#3264D6", "cornerRadiusEnd": 4 },
-          "encoding": { "x": { "field": "category", "type": "nominal", "title": "Category" }, "y": { "field": "value", "type": "quantitative", "title": "Value" } },
+          "encoding": { "x": { "field": "category", "type": "nominal", "title": "Category" }, "y": { "field": "value", "type": "quantitative", "title": "Value" }, "tooltip": [{ "field": "category", "type": "nominal", "label": "Category" }, { "field": "value", "type": "quantitative", "label": "Value", "format": { "type": "number", "maximumFractionDigits": 0 } }] },
           "selections": [{ "id": "pickedCategory", "type": "point", "on": "click", "fields": ["category"] }] } } }
   ] },
   "interactions": [

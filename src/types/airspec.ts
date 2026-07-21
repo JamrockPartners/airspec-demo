@@ -308,6 +308,37 @@ export interface AirspecChartComponent extends AirspecComponentBase {
 
 export type AirspecGraphic = AirspecUnitGraphic | AirspecLayeredGraphic;
 
+export interface AirspecEncoding {
+  x?: AirspecChannel;
+  y?: AirspecChannel;
+  x2?: AirspecChannel;
+  y2?: AirspecChannel;
+  xOffset?: AirspecChannel;
+  yOffset?: AirspecChannel;
+  color?: AirspecChannel;
+  fill?: AirspecChannel;
+  stroke?: AirspecChannel;
+  opacity?: AirspecChannel;
+  fillOpacity?: AirspecChannel;
+  strokeOpacity?: AirspecChannel;
+  size?: AirspecChannel;
+  shape?: AirspecChannel;
+  angle?: AirspecChannel;
+  theta?: AirspecChannel;
+  theta2?: AirspecChannel;
+  radius?: AirspecChannel;
+  radius2?: AirspecChannel;
+  strokeDash?: AirspecChannel;
+  strokeWidth?: AirspecChannel;
+  text?: AirspecChannel;
+  tooltip?: AirspecChannel | AirspecChannel[];
+  detail?: AirspecChannel;
+  order?: AirspecChannel;
+  row?: AirspecChannel;
+  column?: AirspecChannel;
+  facet?: AirspecChannel;
+}
+
 export interface AirspecUnitGraphic {
   mark: AirspecMark;
   encoding: AirspecEncoding;

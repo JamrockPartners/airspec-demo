@@ -16,7 +16,11 @@
         "color": {
           "field": "status",
           "type": "nominal"
-        }
+        },
+        "tooltip": [
+          { "field": "status", "type": "nominal", "label": "Status" },
+          { "field": "count", "type": "quantitative", "label": "Count" }
+        ]
       }
     },
     "rows": [

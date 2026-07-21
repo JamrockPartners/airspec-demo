@@ -25,7 +25,12 @@
         "color": {
           "field": "series",
           "type": "nominal"
-        }
+        },
+        "tooltip": [
+          { "field": "date", "type": "temporal", "label": "Week" },
+          { "field": "series", "type": "nominal", "label": "Series" },
+          { "field": "value", "type": "quantitative", "label": "Users" }
+        ]
       }
     },
     "rows": [

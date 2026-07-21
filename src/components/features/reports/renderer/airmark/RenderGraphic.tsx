@@ -7,9 +7,10 @@ interface RenderGraphicProps {
   data: Record<string, unknown>[];
   selectionStates: Record<string, unknown>;
   onSelectionChange: (selectionId: string, type: 'point' | 'interval', fields: string[], value: unknown, row: Record<string, unknown>) => void;
+  transitionMs?: number;
 }
 
-export function RenderGraphic({ graphic, data, selectionStates, onSelectionChange }: RenderGraphicProps) {
+export function RenderGraphic({ graphic, data, selectionStates, onSelectionChange, transitionMs }: RenderGraphicProps) {
   const selectionState = buildSelectionState(graphic, selectionStates);
 
   const handleSelect = useCallback((payload: { selection: string; datum: Record<string, unknown>; fields?: string[] }) => {
@@ -29,6 +30,7 @@ export function RenderGraphic({ graphic, data, selectionStates, onSelectionChang
         selectionState={selectionState as any}
         onSelect={handleSelect}
         minHeight={200}
+        transitionMs={transitionMs}
       />
     </AirmarkErrorBoundary>
   );

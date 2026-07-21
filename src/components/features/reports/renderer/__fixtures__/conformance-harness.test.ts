@@ -51,7 +51,7 @@ describe('AIRMark engine: all fixtures produce valid scene graphs', () => {
 
 describe('Fixture invariant assertions', () => {
   it('bar-vertical-letter-frequency: 26 bars, E tallest', () => {
-    const scene = layout(barVertical.input as Parameters<typeof layout>[0]);
+    const scene = layout(barVertical.input as unknown as Parameters<typeof layout>[0]);
     const bars = marks(scene, 'rect') as Array<{ height: number; meta?: { datum?: Record<string, unknown> } }>;
     expect(bars.length).toBe(26);
     const tallest = bars.reduce((a, b) => (b.height > a.height ? b : a));
@@ -106,7 +106,7 @@ describe('Fixture invariant assertions', () => {
   });
 
   it('bar-horizontal-uniform-text-overlay: 14 bars, text labels, no axes', () => {
-    const scene = layout(barHorizontal.input as Parameters<typeof layout>[0]);
+    const scene = layout(barHorizontal.input as unknown as Parameters<typeof layout>[0]);
     const allNodes = allNodesFlat(scene);
     const markRects = allNodes.filter((n) => n.type === 'rect' && (n.meta as Record<string, unknown>)?.role === 'mark');
     expect(markRects.length).toBe(14);
@@ -142,14 +142,14 @@ describe('Fixture invariant assertions', () => {
   });
 
   it('arc-donut: 3 ring slices with inner radius hole', () => {
-    const scene = layout(arcDonut.input as Parameters<typeof layout>[0]);
+    const scene = layout(arcDonut.input as unknown as Parameters<typeof layout>[0]);
     const allNodes = allNodesFlat(scene);
     const arcPaths = allNodes.filter((n) => n.type === 'path' && (n.meta as Record<string, unknown>)?.role === 'mark');
     expect(arcPaths.length).toBe(3);
   });
 
   it('arc-pie-legend: 4 slices, legend present', () => {
-    const scene = layout(arcPieLegend.input as Parameters<typeof layout>[0]);
+    const scene = layout(arcPieLegend.input as unknown as Parameters<typeof layout>[0]);
     const allNodes = allNodesFlat(scene);
     const arcPaths = allNodes.filter((n) => n.type === 'path' && (n.meta as Record<string, unknown>)?.role === 'mark');
     expect(arcPaths.length).toBe(4);
@@ -174,7 +174,7 @@ describe('Fixture invariant assertions', () => {
   });
 
   it('line-multiseries-temporal: 2 paths in palette order, legend', () => {
-    const scene = layout(lineMultiseries.input as Parameters<typeof layout>[0]);
+    const scene = layout(lineMultiseries.input as unknown as Parameters<typeof layout>[0]);
     const allNodes = allNodesFlat(scene);
     const linePaths = allNodes.filter((n) => n.type === 'path' && (n.meta as Record<string, unknown>)?.role === 'mark');
     expect(linePaths.length).toBe(2);

@@ -15,7 +15,11 @@
         "color": {
           "field": "browser",
           "type": "nominal"
-        }
+        },
+        "tooltip": [
+          { "field": "browser", "type": "nominal", "label": "Browser" },
+          { "field": "share", "type": "quantitative", "label": "Market Share (%)", "format": { "type": "number", "decimals": 1 } }
+        ]
       }
     },
     "rows": [
