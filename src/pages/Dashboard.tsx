@@ -150,7 +150,7 @@ function WideCard({
             className="absolute inset-0 origin-top-left pointer-events-none select-none"
             style={{
               transform: 'scale(0.16)',
-              width: '1200px',
+              width: '625%',
               height: '625%',
             }}
           >
@@ -173,6 +173,7 @@ function WideCard({
           <h3 className="text-xs font-semibold text-slate-900 leading-tight truncate">
             {report.name}
           </h3>
+          <Clock size={10} className="text-slate-400" />
           <span className="text-[10px] text-slate-400 font-medium flex-shrink-0">{age}</span>
           {report.model && (
             <>
