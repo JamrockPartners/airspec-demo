@@ -20,6 +20,7 @@ interface ReportBuilderModalProps {
   error: string | null;
   currentSpec: AirspecDocument | null;
   reportId: string | null;
+  reportName: string | null;
   versionId: string | null;
   versionNumber: number | null;
   validationErrors: string[] | null;
@@ -47,6 +48,7 @@ export default function ReportBuilderModal({
   error,
   currentSpec,
   reportId,
+  reportName,
   versionId,
   versionNumber,
   validationErrors,
@@ -136,7 +138,9 @@ export default function ReportBuilderModal({
   };
 
   const handleSave = () => {
-    if (saveName.trim()) {
+    if (reportId && reportName) {
+      onSave(reportName);
+    } else if (saveName.trim()) {
       onSave(saveName.trim());
       setShowSaveInput(false);
       setSaveName('');
@@ -194,7 +198,7 @@ export default function ReportBuilderModal({
           <div className="flex items-center gap-2">
             {currentSpec && (
               <>
-                {showSaveInput ? (
+                {showSaveInput && !reportId ? (
                   <div className="flex items-center gap-1.5">
                     <input
                       type="text"
@@ -214,7 +218,7 @@ export default function ReportBuilderModal({
                   </div>
                 ) : (
                   <button
-                    onClick={() => setShowSaveInput(true)}
+                    onClick={() => reportId ? handleSave() : setShowSaveInput(true)}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
                   >
                     <Save size={13} />

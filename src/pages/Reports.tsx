@@ -152,6 +152,7 @@ export default function Reports() {
         error={chat.error}
         currentSpec={chat.currentSpec}
         reportId={chat.reportId}
+        reportName={chat.reportName}
         versionId={chat.versionId}
         versionNumber={chat.versionNumber}
         validationErrors={chat.validationErrors}

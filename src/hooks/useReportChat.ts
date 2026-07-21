@@ -13,6 +13,7 @@ interface UseReportChatReturn {
   error: string | null;
   currentSpec: AirspecDocument | null;
   reportId: string | null;
+  reportName: string | null;
   versionId: string | null;
   versionNumber: number | null;
   validationErrors: string[] | null;
@@ -25,7 +26,7 @@ interface UseReportChatReturn {
   sendMessage: (content: string) => Promise<void>;
   generate: () => Promise<void>;
   reset: () => void;
-  loadExisting: (report: { id: string; session_id: string | null; current_version_id: string | null; model?: string | null }) => Promise<void>;
+  loadExisting: (report: { id: string; name: string; session_id: string | null; current_version_id: string | null; model?: string | null }) => Promise<void>;
   addAttachments: (files: File[]) => Promise<void>;
   removeAttachment: (id: string) => void;
   clearAttachments: () => void;
@@ -41,6 +42,7 @@ export function useReportChat(): UseReportChatReturn {
   const [error, setError] = useState<string | null>(null);
   const [currentSpec, setCurrentSpec] = useState<AirspecDocument | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
+  const [reportName, setReportName] = useState<string | null>(null);
   const [versionId, setVersionId] = useState<string | null>(null);
   const [versionNumber, setVersionNumber] = useState<number | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[] | null>(null);
@@ -159,6 +161,7 @@ export function useReportChat(): UseReportChatReturn {
     setError(null);
     setCurrentSpec(null);
     setReportId(null);
+    setReportName(null);
     setVersionId(null);
     setVersionNumber(null);
     setValidationErrors(null);
@@ -170,6 +173,7 @@ export function useReportChat(): UseReportChatReturn {
 
   const loadExisting = useCallback(async (report: {
     id: string;
+    name: string;
     session_id: string | null;
     current_version_id: string | null;
     model?: string | null;
@@ -177,6 +181,7 @@ export function useReportChat(): UseReportChatReturn {
     if (report.model) setModel(report.model);
     setError(null);
     setReportId(report.id);
+    setReportName(report.name);
     sessionIdRef.current = report.session_id ?? crypto.randomUUID();
 
     if (report.session_id) {
@@ -211,6 +216,7 @@ export function useReportChat(): UseReportChatReturn {
     error,
     currentSpec,
     reportId,
+    reportName,
     versionId,
     versionNumber,
     validationErrors,
