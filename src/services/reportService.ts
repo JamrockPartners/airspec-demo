@@ -166,6 +166,18 @@ export async function archiveReport(reportId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+export async function updateCardLayout(
+  reportId: string,
+  layout: 'tall' | 'wide' | null
+): Promise<void> {
+  const { error } = await supabase
+    .from('airspec_reports')
+    .update({ card_layout: layout })
+    .eq('id', reportId);
+
+  if (error) throw new Error(error.message);
+}
+
 export async function getReportWithVersion(reportId: string): Promise<{
   report: Report;
   version: ReportVersion;

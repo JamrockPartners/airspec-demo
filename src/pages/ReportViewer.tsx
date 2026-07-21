@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, History, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Loader2, History, RotateCcw, RectangleVertical, RectangleHorizontal } from 'lucide-react';
 import { reportService } from '../services';
 import type { Report, ReportVersion, AirspecDocument } from '../types/airspec';
 import ReportPreview from '../components/features/reports/ReportPreview';
@@ -76,6 +76,34 @@ export default function ReportViewer() {
           Back to reports
         </button>
         <div className="flex items-center gap-2">
+          <div className="flex items-center bg-slate-100 rounded-lg p-0.5 mr-2">
+            <button
+              onClick={async () => {
+                const next = report.card_layout === 'tall' ? null : 'tall' as const;
+                await reportService.updateCardLayout(report.id, next);
+                setReport({ ...report, card_layout: next });
+              }}
+              className={`p-1.5 rounded-md transition-all ${
+                report.card_layout !== 'wide' ? 'bg-white shadow-sm text-slate-700' : 'text-slate-400 hover:text-slate-500'
+              }`}
+              title="Tall card on dashboard"
+            >
+              <RectangleVertical size={14} />
+            </button>
+            <button
+              onClick={async () => {
+                const next = report.card_layout === 'wide' ? null : 'wide' as const;
+                await reportService.updateCardLayout(report.id, next);
+                setReport({ ...report, card_layout: next });
+              }}
+              className={`p-1.5 rounded-md transition-all ${
+                report.card_layout === 'wide' ? 'bg-white shadow-sm text-slate-700' : 'text-slate-400 hover:text-slate-500'
+              }`}
+              title="Wide card on dashboard"
+            >
+              <RectangleHorizontal size={14} />
+            </button>
+          </div>
           <span className="text-xs text-slate-400">v{version.version_number}</span>
           {versions.length > 1 && (
             <button

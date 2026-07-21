@@ -33,6 +33,7 @@ export interface Report {
   created_at: string;
   updated_at: string;
   archived_at: string | null;
+  card_layout: 'tall' | 'wide' | null;
 }
 
 export interface ReportVersion {
