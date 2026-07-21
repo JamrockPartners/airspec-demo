@@ -63,7 +63,7 @@ export default function AirGrid({ component }: AirComponentProps) {
   }
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', height: `${totalHeight}px` }}>
+    <div ref={containerRef} style={{ position: 'relative', height: `${totalHeight}px`, width: '100%', overflow: 'hidden' }}>
       {boxes.map((box, idx) => {
         const child = children[idx];
         if (!child) return null;

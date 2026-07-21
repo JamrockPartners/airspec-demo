@@ -9,7 +9,7 @@ function AppLayout() {
   return (
     <div className="flex min-h-screen bg-slate-50">
       <Sidebar />
-      <main className="ml-60 flex-1 p-8">
+      <main className="ml-60 flex-1 p-8 min-w-0 overflow-x-hidden w-full">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/reports" element={<Reports />} />

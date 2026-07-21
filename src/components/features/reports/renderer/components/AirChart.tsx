@@ -87,7 +87,7 @@ export default function AirChart({ component }: AirComponentProps) {
         </div>
       ) : (
         <div
-          className={`w-full relative ${seamless && totalCols > 1 ? 'overflow-visible' : 'overflow-hidden'}`}
+          className={`w-full relative overflow-hidden`}
           style={{
             height: '360px',
             ...(seamless && totalCols > 1 ? {
