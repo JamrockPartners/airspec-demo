@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, HelpCircle } from 'lucide-react';
 import type { AirComponentProps } from '../componentRegistry';
 import { useReportContext } from '../ReportContext';
 import type { AirspecTableComponent } from '../../../../../types/airspec';
@@ -15,7 +15,7 @@ interface ColumnDef {
 }
 
 export default function AirTable({ component }: AirComponentProps) {
-  const { datasets, loadDataset } = useReportContext();
+  const { datasets, loadDataset, diagnoseEmpty } = useReportContext();
   const c = component as unknown as AirspecTableComponent;
   const datasetId = c.datasetId;
   const title = c.title;
@@ -62,7 +62,16 @@ export default function AirTable({ component }: AirComponentProps) {
         </div>
       )}
       {data.length === 0 ? (
-        <div className="flex items-center justify-center py-12 text-sm text-slate-400">No data</div>
+        <div className="flex flex-col items-center justify-center py-12 text-sm text-slate-400">
+          No data
+          <button
+            onClick={() => diagnoseEmpty(datasetId)}
+            className="mt-2 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 font-medium transition-colors"
+          >
+            <HelpCircle size={12} />
+            Why no data?
+          </button>
+        </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

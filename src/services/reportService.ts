@@ -215,6 +215,19 @@ export async function fetchDataForReport(
   });
 }
 
+export async function diagnoseEmptyDataset(
+  versionId: string,
+  datasetId: string,
+  parameters: Record<string, unknown>
+): Promise<string> {
+  const result = await callEdgeFunction<{ analysis: string }>('airspec-diagnose-empty', {
+    versionId,
+    datasetId,
+    parameters,
+  });
+  return result.analysis;
+}
+
 export async function getChatHistory(sessionId: string): Promise<ChatMessage[]> {
   const { data, error } = await supabase
     .from('airspec_report_generation_messages')

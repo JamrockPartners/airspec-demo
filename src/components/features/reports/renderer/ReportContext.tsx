@@ -11,6 +11,7 @@ import type {
   AirspecFilter,
 } from '../../../../types/airspec';
 import { reportService } from '../../../../services';
+import DiagnosisModal from '../DiagnosisModal';
 
 interface DatasetState {
   loading: boolean;
@@ -39,6 +40,7 @@ interface ReportContextValue {
   clearSelection: (selectionId: string) => void;
   triggerInteraction: (componentId: string, event: string, selectionId?: string, row?: Record<string, unknown>) => void;
   resolveGraphic: (chart: AirspecChartComponent) => GraphicResolution;
+  diagnoseEmpty: (datasetId: string) => void;
 }
 
 const ReportContext = createContext<ReportContextValue | null>(null);
@@ -66,6 +68,9 @@ export function ReportProvider({ document, versionId, children }: ReportProvider
 
   const [datasets, setDatasets] = useState<Record<string, DatasetState>>({});
   const [selections, setSelections] = useState<Record<string, SelectionValue>>({});
+  const [diagnosis, setDiagnosis] = useState<{ open: boolean; loading: boolean; analysis: string | null; error: string | null }>({
+    open: false, loading: false, analysis: null, error: null,
+  });
   const loadingRef = useRef<Set<string>>(new Set());
   // Monotonic state revision; stale fetches are ignored.
   const revisionRef = useRef(0);
@@ -271,6 +276,22 @@ export function ReportProvider({ document, versionId, children }: ReportProvider
     return { graphic: null, bindingError: null };
   }, [parameters]);
 
+  const diagnoseEmpty = useCallback((datasetId: string) => {
+    if (!versionId) {
+      setDiagnosis({ open: true, loading: false, analysis: null, error: 'Diagnosis is only available for saved reports.' });
+      return;
+    }
+    setDiagnosis({ open: true, loading: true, analysis: null, error: null });
+    reportService
+      .diagnoseEmptyDataset(versionId, datasetId, parameters)
+      .then((analysis) => {
+        setDiagnosis({ open: true, loading: false, analysis, error: null });
+      })
+      .catch((err) => {
+        setDiagnosis({ open: true, loading: false, analysis: null, error: err instanceof Error ? err.message : 'Diagnosis failed' });
+      });
+  }, [versionId, parameters]);
+
   const value = useMemo<ReportContextValue>(() => ({
     document,
     parameters,
@@ -284,9 +305,21 @@ export function ReportProvider({ document, versionId, children }: ReportProvider
     clearSelection,
     triggerInteraction,
     resolveGraphic,
-  }), [document, parameters, datasets, versionId, selections, setParameter, clearParameter, loadDataset, updateSelection, clearSelection, triggerInteraction, resolveGraphic]);
+    diagnoseEmpty,
+  }), [document, parameters, datasets, versionId, selections, setParameter, clearParameter, loadDataset, updateSelection, clearSelection, triggerInteraction, resolveGraphic, diagnoseEmpty]);
 
-  return <ReportContext.Provider value={value}>{children}</ReportContext.Provider>;
+  return (
+    <ReportContext.Provider value={value}>
+      {children}
+      <DiagnosisModal
+        open={diagnosis.open}
+        loading={diagnosis.loading}
+        analysis={diagnosis.analysis}
+        error={diagnosis.error}
+        onClose={() => setDiagnosis((prev) => ({ ...prev, open: false }))}
+      />
+    </ReportContext.Provider>
+  );
 }
 
 // Find datasets affected by a parameter change. A dataset is affected if the

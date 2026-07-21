@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
-import { Loader2, TrendingUp } from 'lucide-react';
+import { Loader2, TrendingUp, HelpCircle } from 'lucide-react';
 import type { AirComponentProps } from '../componentRegistry';
 import { useReportContext } from '../ReportContext';
 import { useGridContext } from '../GridContext';
 import type { AirspecMetricComponent, AirspecFormat } from '../../../../../types/airspec';
 
 export default function AirMetric({ component }: AirComponentProps) {
-  const { datasets, loadDataset } = useReportContext();
+  const { datasets, loadDataset, diagnoseEmpty } = useReportContext();
   const { seamless } = useGridContext();
   const c = component as unknown as AirspecMetricComponent;
   const datasetId = c.datasetId;
@@ -51,6 +51,7 @@ export default function AirMetric({ component }: AirComponentProps) {
 
   const row = datasetState?.data?.[0];
   const value = row ? row[valueField] : null;
+  const isEmpty = (value === null || value === undefined) && datasetState?.data && datasetState.data.length === 0;
 
   return (
     <div className={seamless ? 'p-5 bg-white h-full' : 'p-5 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow h-full'}>
@@ -60,6 +61,15 @@ export default function AirMetric({ component }: AirComponentProps) {
           <p className="text-2xl font-bold text-slate-900 mt-1">
             {prefix}{formatValue(value)}{suffix}
           </p>
+          {isEmpty && (
+              <button
+                onClick={() => diagnoseEmpty(datasetId)}
+                className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 font-medium transition-colors mt-1"
+              >
+                <HelpCircle size={11} />
+                Why no data?
+              </button>
+            )}
           {subtitle && c.title && <p className="text-xs text-slate-500 mt-1">{subtitle}</p>}
         </div>
         <div className="p-2 bg-blue-50 rounded-lg">

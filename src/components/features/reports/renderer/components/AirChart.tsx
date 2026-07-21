@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, HelpCircle } from 'lucide-react';
 import type { AirComponentProps } from '../componentRegistry';
 import { useReportContext } from '../ReportContext';
 import { useGridContext } from '../GridContext';
@@ -7,7 +7,7 @@ import { RenderGraphic } from '../airmark/RenderGraphic';
 import type { AirspecChartComponent } from '../../../../../types/airspec';
 
 export default function AirChart({ component }: AirComponentProps) {
-  const { datasets, loadDataset, resolveGraphic, selections, updateSelection, clearSelection, triggerInteraction } = useReportContext();
+  const { datasets, loadDataset, resolveGraphic, selections, updateSelection, clearSelection, triggerInteraction, diagnoseEmpty } = useReportContext();
   const { seamless, colIndex, totalCols } = useGridContext();
   const c = component as unknown as AirspecChartComponent;
   const datasetId = c.datasetId;
@@ -75,7 +75,16 @@ export default function AirChart({ component }: AirComponentProps) {
       ) : !graphic ? (
         <div className="text-sm text-amber-600">Chart missing graphic or graphicBinding</div>
       ) : data.length === 0 ? (
-        <div className="flex items-center justify-center flex-1 min-h-[12rem] text-sm text-slate-400">No data available</div>
+        <div className="flex flex-col items-center justify-center flex-1 min-h-[12rem] text-sm text-slate-400">
+          No data available
+          <button
+            onClick={() => diagnoseEmpty(datasetId)}
+            className="mt-2 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 font-medium transition-colors"
+          >
+            <HelpCircle size={12} />
+            Why no data?
+          </button>
+        </div>
       ) : (
         <div
           className={`w-full relative ${seamless && totalCols > 1 ? 'overflow-visible' : 'overflow-hidden'}`}
