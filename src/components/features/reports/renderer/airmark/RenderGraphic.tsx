@@ -32,6 +32,8 @@ export function RenderGraphic({ graphic, data, selectionStates, onSelectionChang
   const wrapperRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const activeTitleRef = useRef<{ el: Element; original: string } | null>(null);
+  const lastMouseRef = useRef<{ x: number; y: number }>({ x: -999, y: -999 });
+  const rafPendingRef = useRef(false);
 
   const handleSelect = useCallback((payload: { selection: string; datum: Record<string, unknown>; fields?: string[] }) => {
     const fields = payload.fields ?? [];
@@ -86,33 +88,48 @@ export function RenderGraphic({ graphic, data, selectionStates, onSelectionChang
   }, []);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const clientX = e.clientX;
+    const clientY = e.clientY;
     const target = e.target as Element;
-    const titleEl = target.querySelector?.('title') ?? null;
 
-    if (titleEl && titleEl.textContent) {
-      if (activeTitleRef.current?.el !== target) {
+    // Skip if same target and mouse hasn't moved more than 4px
+    const dx = clientX - lastMouseRef.current.x;
+    const dy = clientY - lastMouseRef.current.y;
+    const sameTarget = activeTitleRef.current?.el === target;
+    if (sameTarget && dx * dx + dy * dy < 16) return;
+
+    lastMouseRef.current = { x: clientX, y: clientY };
+
+    if (rafPendingRef.current) return;
+    rafPendingRef.current = true;
+
+    requestAnimationFrame(() => {
+      rafPendingRef.current = false;
+      const titleEl = target.querySelector?.('title') ?? null;
+
+      if (titleEl && titleEl.textContent) {
+        if (activeTitleRef.current?.el !== target) {
+          if (activeTitleRef.current) {
+            const prevTitle = activeTitleRef.current.el.querySelector('title');
+            if (prevTitle) prevTitle.textContent = activeTitleRef.current.original;
+          }
+          const original = titleEl.textContent;
+          activeTitleRef.current = { el: target, original };
+          titleEl.textContent = '';
+          const lines = parseTooltipText(original);
+          if (lines.length > 0) showTooltip(lines, clientX, clientY);
+        } else {
+          applyPosition(clientX, clientY);
+        }
+      } else {
         if (activeTitleRef.current) {
           const prevTitle = activeTitleRef.current.el.querySelector('title');
           if (prevTitle) prevTitle.textContent = activeTitleRef.current.original;
+          activeTitleRef.current = null;
         }
-        const original = titleEl.textContent;
-        activeTitleRef.current = { el: target, original };
-        titleEl.textContent = '';
-        const lines = parseTooltipText(original);
-        if (lines.length > 0) {
-          showTooltip(lines, e.clientX, e.clientY);
-        }
-      } else {
-        applyPosition(e.clientX, e.clientY);
+        hideTooltip();
       }
-    } else {
-      if (activeTitleRef.current) {
-        const prevTitle = activeTitleRef.current.el.querySelector('title');
-        if (prevTitle) prevTitle.textContent = activeTitleRef.current.original;
-        activeTitleRef.current = null;
-      }
-      hideTooltip();
-    }
+    });
   }, [showTooltip, applyPosition, hideTooltip]);
 
   const handleMouseLeave = useCallback(() => {
