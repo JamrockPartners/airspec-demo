@@ -46,7 +46,7 @@ function MasonryCard({
         <div className="overflow-hidden bg-slate-50/50 rounded-t-2xl">
           <div
             className="pointer-events-none select-none"
-            style={{ zoom: 0.45, maxHeight: '600px', overflow: 'hidden' }}
+            style={{ zoom: 0.45, width: '800px', maxHeight: '600px', overflow: 'hidden' }}
           >
             <div className="p-5">
               <ReportProvider document={spec} versionId={versionId}>
